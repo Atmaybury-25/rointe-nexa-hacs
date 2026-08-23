@@ -1,0 +1,641 @@
+{
+  "views": [
+    {
+      "title": "Living room",
+      "path": "living-room",
+      "icon": "mdi:radiator",
+      "type": "sections",
+      "max_columns": 3,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Living room heater",
+              "icon": "mdi:radiator",
+              "heading_style": "title"
+            },
+            {
+              "type": "custom:mushroom-chips-card",
+              "alignment": "center",
+              "chips": [
+                {
+                  "type": "entity",
+                  "entity": "binary_sensor.living_room_sh_453ab4_charging",
+                  "icon_color": "blue"
+                },
+                {
+                  "type": "entity",
+                  "entity": "switch.living_room_sh_453ab4_boost",
+                  "icon_color": "orange"
+                },
+                {
+                  "type": "entity",
+                  "entity": "binary_sensor.economy_7_window",
+                  "icon_color": "purple"
+                },
+                {
+                  "type": "entity",
+                  "entity": "binary_sensor.living_room_sh_453ab4_open_window_detected",
+                  "icon_color": "red"
+                },
+                {
+                  "type": "entity",
+                  "entity": "binary_sensor.living_room_sh_453ab4_online",
+                  "icon_color": "green"
+                }
+              ]
+            },
+            {
+              "type": "custom:mushroom-climate-card",
+              "entity": "climate.living_room_sh_453ab4",
+              "name": "Living room",
+              "icon": "mdi:radiator",
+              "hvac_modes": [
+                "auto",
+                "heat",
+                "off"
+              ],
+              "show_temperature_control": true,
+              "collapsible_controls": false,
+              "fill_container": false
+            },
+            {
+              "type": "gauge",
+              "entity": "sensor.living_room_sh_453ab4_charge",
+              "name": "Stored charge",
+              "min": 0,
+              "max": 100,
+              "needle": true,
+              "severity": {
+                "green": 55,
+                "yellow": 25,
+                "red": 0
+              }
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.living_room_sh_453ab4_core_temperature",
+              "name": "Core temperature",
+              "color": "orange"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.living_room_sh_453ab4_room_temperature",
+              "name": "Room (heater probe)",
+              "color": "blue"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.living_room_heater_charge_headroom",
+              "name": "Room to fill",
+              "color": "green"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Charge",
+              "icon": "mdi:battery-charging-medium",
+              "heading_style": "title"
+            },
+            {
+              "type": "custom:apexcharts-card",
+              "header": {
+                "show": true,
+                "title": "Charge and core temperature — 24h",
+                "show_states": true,
+                "colorize_states": true
+              },
+              "graph_span": "24h",
+              "span": {
+                "end": "minute"
+              },
+              "apex_config": {
+                "chart": {
+                  "height": 340
+                },
+                "legend": {
+                  "show": true,
+                  "position": "bottom"
+                },
+                "grid": {
+                  "strokeDashArray": 3
+                }
+              },
+              "yaxis": [
+                {
+                  "id": "pct",
+                  "min": 0,
+                  "max": 100,
+                  "decimals": 0,
+                  "apex_config": {
+                    "tickAmount": 4,
+                    "title": {
+                      "text": "charge %"
+                    }
+                  }
+                },
+                {
+                  "id": "temp",
+                  "opposite": true,
+                  "min": 0,
+                  "max": 90,
+                  "decimals": 0,
+                  "apex_config": {
+                    "tickAmount": 3,
+                    "title": {
+                      "text": "°C"
+                    }
+                  }
+                }
+              ],
+              "series": [
+                {
+                  "entity": "binary_sensor.economy_7_window",
+                  "name": "Cheap rate",
+                  "yaxis_id": "pct",
+                  "type": "area",
+                  "curve": "stepline",
+                  "stroke_width": 0,
+                  "opacity": 0.12,
+                  "color": "#7e57c2",
+                  "transform": "return x === 'on' ? 100 : 0;",
+                  "show": {
+                    "legend_value": false,
+                    "in_header": false
+                  }
+                },
+                {
+                  "entity": "binary_sensor.living_room_sh_453ab4_charging",
+                  "name": "Charging",
+                  "yaxis_id": "pct",
+                  "type": "area",
+                  "curve": "stepline",
+                  "stroke_width": 0,
+                  "opacity": 0.2,
+                  "color": "#1e88e5",
+                  "transform": "return x === 'on' ? 100 : 0;",
+                  "show": {
+                    "legend_value": false,
+                    "in_header": false
+                  }
+                },
+                {
+                  "entity": "sensor.living_room_sh_453ab4_charge",
+                  "name": "Charge",
+                  "yaxis_id": "pct",
+                  "type": "line",
+                  "color": "#2e7d32",
+                  "stroke_width": 3
+                },
+                {
+                  "entity": "sensor.living_room_sh_453ab4_core_temperature",
+                  "name": "Core",
+                  "yaxis_id": "temp",
+                  "type": "line",
+                  "color": "#ef6c00",
+                  "stroke_width": 2
+                }
+              ]
+            },
+            {
+              "type": "heading",
+              "heading": "Today",
+              "heading_style": "subtitle"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.living_room_heater_charging_today",
+              "name": "Hours charging today",
+              "color": "blue"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.living_room_heater_charge_energy_today",
+              "name": "Energy today (est.)",
+              "color": "amber"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.living_room_heater_charge_after_economy_7",
+              "name": "Charge at end of cheap rate",
+              "color": "purple"
+            },
+            {
+              "type": "markdown",
+              "content": "Energy is an **estimate** — the heater reports no power, so this is its 1560 W element counted as on or off. Good enough to size a night, not a meter reading."
+            }
+          ],
+          "column_span": 2
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Comfort",
+              "icon": "mdi:thermometer",
+              "heading_style": "title"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.temp_living_room_temperature",
+              "name": "Living room (Zigbee)",
+              "color": "blue"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.temp_living_room_humidity",
+              "name": "Humidity",
+              "color": "cyan"
+            },
+            {
+              "type": "history-graph",
+              "title": "Temperature, 24 h",
+              "hours_to_show": 24,
+              "entities": [
+                {
+                  "entity": "sensor.living_room_sh_453ab4_room_temperature",
+                  "name": "Heater probe"
+                },
+                {
+                  "entity": "sensor.temp_living_room_temperature",
+                  "name": "Zigbee sensor"
+                },
+                {
+                  "entity": "climate.living_room_sh_453ab4",
+                  "name": "Heater mode"
+                }
+              ]
+            },
+            {
+              "type": "heading",
+              "heading": "Elsewhere in the house",
+              "heading_style": "subtitle"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.temp_hall_upper_temperature",
+              "name": "Upper hall"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.temp_kitchen_temperature",
+              "name": "Kitchen"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.temp_conservatory_temperature",
+              "name": "Conservatory"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Charge control",
+              "icon": "mdi:tune-variant",
+              "heading_style": "title"
+            },
+            {
+              "type": "entities",
+              "entities": [
+                {
+                  "entity": "number.living_room_sh_453ab4_maximum_charge",
+                  "name": "Maximum charge"
+                },
+                {
+                  "entity": "number.living_room_sh_453ab4_minimum_charge",
+                  "name": "Minimum charge"
+                },
+                {
+                  "entity": "number.living_room_sh_453ab4_additional_charge",
+                  "name": "Additional charge (hours)"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "entity": "switch.living_room_sh_453ab4_smart_charging",
+                  "name": "Rointe's smart charging"
+                },
+                {
+                  "entity": "switch.living_room_sh_453ab4_boost",
+                  "name": "Boost"
+                }
+              ]
+            },
+            {
+              "type": "markdown",
+              "content": "**Smart charging on** — the heater decides how much it needs within the\nhours you allow. Right for Economy 7, where the cheap window never moves.\n\n**Smart charging off** — the schedule you write is authoritative. Right for a\nhalf-hourly tariff, where Home Assistant picks the hours. Set *additional\ncharge* to 0 at the same time, or it may take up to that many hours at\nwhatever the price happens to be."
+            },
+            {
+              "type": "heading",
+              "heading": "Economy 7 window",
+              "heading_style": "subtitle"
+            },
+            {
+              "type": "entities",
+              "entities": [
+                {
+                  "entity": "input_datetime.economy7_start",
+                  "name": "Cheap rate starts"
+                },
+                {
+                  "entity": "input_datetime.economy7_end",
+                  "name": "Cheap rate ends"
+                },
+                {
+                  "entity": "binary_sensor.economy_7_window",
+                  "name": "Cheap rate now"
+                }
+              ],
+              "footer": {
+                "type": "graph",
+                "entity": "sensor.living_room_sh_453ab4_charge",
+                "hours_to_show": 24
+              }
+            },
+            {
+              "type": "markdown",
+              "content": "Set these to the times your meter actually switches — everything else on this dashboard keys off them."
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Diagnostics",
+              "icon": "mdi:stethoscope",
+              "heading_style": "title"
+            },
+            {
+              "type": "tile",
+              "entity": "binary_sensor.living_room_sh_453ab4_online",
+              "name": "Cloud connection"
+            },
+            {
+              "type": "tile",
+              "entity": "binary_sensor.living_room_sh_453ab4_open_window_detected",
+              "name": "Open window detected"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.living_room_heater_charge_energy",
+              "name": "Energy since setup (est.)"
+            },
+            {
+              "type": "markdown",
+              "content": "### Writing a charge window\n\n```yaml\naction: rointe_nexa.set_charge_hours\ntarget:\n  entity_id: climate.living_room_sh_453ab4\ndata:\n  hours: [1, 2, 3, 4, 5, 6]   # each hour it MAY charge\n  days: [0, 1, 2, 3, 4]       # Mon-Fri, omit for every day\n```\n\nHour numbers are the hour that *starts* then, so `[2]` means 02:00–03:00.\nCommands are zone-scoped: two heaters in one Nexa zone share settings, so\ngive each its own zone in the app."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "History",
+      "path": "history",
+      "icon": "mdi:chart-line",
+      "type": "sections",
+      "max_columns": 2,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "The week",
+              "icon": "mdi:calendar-week",
+              "heading_style": "title"
+            },
+            {
+              "type": "custom:apexcharts-card",
+              "header": {
+                "show": true,
+                "title": "Charge and core temperature — 7d",
+                "show_states": true,
+                "colorize_states": true
+              },
+              "graph_span": "7d",
+              "span": {
+                "end": "minute"
+              },
+              "apex_config": {
+                "chart": {
+                  "height": 360
+                },
+                "legend": {
+                  "show": true,
+                  "position": "bottom"
+                },
+                "grid": {
+                  "strokeDashArray": 3
+                }
+              },
+              "yaxis": [
+                {
+                  "id": "pct",
+                  "min": 0,
+                  "max": 100,
+                  "decimals": 0,
+                  "apex_config": {
+                    "tickAmount": 4,
+                    "title": {
+                      "text": "charge %"
+                    }
+                  }
+                },
+                {
+                  "id": "temp",
+                  "opposite": true,
+                  "min": 0,
+                  "max": 90,
+                  "decimals": 0,
+                  "apex_config": {
+                    "tickAmount": 3,
+                    "title": {
+                      "text": "°C"
+                    }
+                  }
+                }
+              ],
+              "series": [
+                {
+                  "entity": "binary_sensor.economy_7_window",
+                  "name": "Cheap rate",
+                  "yaxis_id": "pct",
+                  "type": "area",
+                  "curve": "stepline",
+                  "stroke_width": 0,
+                  "opacity": 0.12,
+                  "color": "#7e57c2",
+                  "transform": "return x === 'on' ? 100 : 0;",
+                  "show": {
+                    "legend_value": false,
+                    "in_header": false
+                  }
+                },
+                {
+                  "entity": "binary_sensor.living_room_sh_453ab4_charging",
+                  "name": "Charging",
+                  "yaxis_id": "pct",
+                  "type": "area",
+                  "curve": "stepline",
+                  "stroke_width": 0,
+                  "opacity": 0.2,
+                  "color": "#1e88e5",
+                  "transform": "return x === 'on' ? 100 : 0;",
+                  "show": {
+                    "legend_value": false,
+                    "in_header": false
+                  }
+                },
+                {
+                  "entity": "sensor.living_room_sh_453ab4_charge",
+                  "name": "Charge",
+                  "yaxis_id": "pct",
+                  "type": "line",
+                  "color": "#2e7d32",
+                  "stroke_width": 3,
+                  "group_by": {
+                    "func": "avg",
+                    "duration": "30min"
+                  }
+                },
+                {
+                  "entity": "sensor.living_room_sh_453ab4_core_temperature",
+                  "name": "Core",
+                  "yaxis_id": "temp",
+                  "type": "line",
+                  "color": "#ef6c00",
+                  "stroke_width": 2,
+                  "group_by": {
+                    "func": "avg",
+                    "duration": "30min"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "history-graph",
+              "title": "Charging vs cheap rate, 3 days",
+              "hours_to_show": 72,
+              "entities": [
+                {
+                  "entity": "binary_sensor.living_room_sh_453ab4_charging",
+                  "name": "Charging"
+                },
+                {
+                  "entity": "binary_sensor.economy_7_window",
+                  "name": "Cheap rate"
+                },
+                {
+                  "entity": "switch.living_room_sh_453ab4_boost",
+                  "name": "Boost"
+                }
+              ]
+            }
+          ],
+          "column_span": 2
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "The long run",
+              "icon": "mdi:chart-timeline-variant",
+              "heading_style": "title"
+            },
+            {
+              "type": "statistics-graph",
+              "title": "Charge — daily min/mean/max",
+              "entities": [
+                "sensor.living_room_sh_453ab4_charge"
+              ],
+              "days_to_show": 30,
+              "period": "day",
+              "stat_types": [
+                "min",
+                "mean",
+                "max"
+              ],
+              "chart_type": "line"
+            },
+            {
+              "type": "statistics-graph",
+              "title": "Core temp — daily min/mean/max",
+              "entities": [
+                "sensor.living_room_sh_453ab4_core_temperature"
+              ],
+              "days_to_show": 30,
+              "period": "day",
+              "stat_types": [
+                "min",
+                "mean",
+                "max"
+              ],
+              "chart_type": "line"
+            },
+            {
+              "type": "statistics-graph",
+              "title": "Room temp — daily mean",
+              "entities": [
+                "sensor.living_room_sh_453ab4_room_temperature",
+                "sensor.temp_living_room_temperature"
+              ],
+              "days_to_show": 30,
+              "period": "day",
+              "stat_types": [
+                "mean"
+              ],
+              "chart_type": "line"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Does the cheap window fill it?",
+              "icon": "mdi:help-circle-outline",
+              "heading_style": "title"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.living_room_heater_charge_after_economy_7",
+              "name": "Charge when cheap rate last ended",
+              "color": "purple"
+            },
+            {
+              "type": "history-graph",
+              "title": "Charge left at the end of each cheap window",
+              "hours_to_show": 336,
+              "entities": [
+                {
+                  "entity": "sensor.living_room_heater_charge_after_economy_7",
+                  "name": "After cheap rate"
+                }
+              ]
+            },
+            {
+              "type": "markdown",
+              "content": "This is the number that settles the sizing question. It snapshots the stored\ncharge the moment the cheap rate ends, so a winter of readings shows whether\nseven hours of Economy 7 actually fills the heater — or whether it needs a\ndaytime top-up, a higher ceiling, or a half-hourly tariff.\n\nWorth revisiting in November, and again after the other two heaters go in."
+            }
+          ],
+          "column_span": 2
+        }
+      ]
+    }
+  ]
+}

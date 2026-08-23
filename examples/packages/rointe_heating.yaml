@@ -1,0 +1,115 @@
+# Rointe storage heater - helpers for the Heating dashboard.
+#
+# Everything the dashboard needs that the integration itself does not provide.
+# To remove all of it: delete this file and the packages line in
+# configuration.yaml.
+
+input_datetime:
+  economy7_start:
+    name: Economy 7 starts
+    icon: mdi:weather-night
+    has_date: false
+    has_time: true
+    initial: "00:30:00"
+  economy7_end:
+    name: Economy 7 ends
+    icon: mdi:weather-sunset-up
+    has_date: false
+    has_time: true
+    initial: "07:30:00"
+
+template:
+  - binary_sensor:
+      - name: Economy 7 window
+        unique_id: economy7_window
+        icon: mdi:clock-time-two-outline
+        # Set the two helpers above to the times your meter actually switches.
+        # Handles a window that crosses midnight, which E7 always does.
+        state: >
+          {% set s = states('input_datetime.economy7_start') %}
+          {% set e = states('input_datetime.economy7_end') %}
+          {% if s in ['unknown', 'unavailable'] or e in ['unknown', 'unavailable'] %}
+            false
+          {% else %}
+            {% set n = now().hour * 60 + now().minute %}
+            {% set sm = s.split(':')[0] | int * 60 + s.split(':')[1] | int %}
+            {% set em = e.split(':')[0] | int * 60 + e.split(':')[1] | int %}
+            {{ (sm <= n < em) if sm < em else (n >= sm or n < em) }}
+          {% endif %}
+
+  - sensor:
+      - name: Living room heater charge headroom
+        unique_id: rointe_lr_charge_headroom
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:battery-plus-outline
+        # How much more it is allowed to take, given the ceiling you set.
+        state: >
+          {% set c = states('sensor.living_room_sh_453ab4_charge') | float(0) %}
+          {% set l = states('number.living_room_sh_453ab4_maximum_charge') | float(100) %}
+          {{ [l - c, 0] | max | round(0) }}
+        availability: >
+          {{ has_value('sensor.living_room_sh_453ab4_charge') }}
+
+      - name: Living room heater charge power
+        unique_id: rointe_lr_charge_power
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        icon: mdi:flash
+        # ESTIMATED, not metered. The heater reports no power, so this is its
+        # 1560 W nominal element treated as on or off. Close enough to size a
+        # night's charge; do not treat it as a meter reading.
+        state: >
+          {{ 1560 if is_state('binary_sensor.living_room_sh_453ab4_charging', 'on') else 0 }}
+        availability: >
+          {{ has_value('binary_sensor.living_room_sh_453ab4_charging') }}
+
+      - name: Living room heater charge energy today
+        unique_id: rointe_lr_charge_energy_today
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        icon: mdi:lightning-bolt
+        # Hours charged today times the 1560 W element. Same estimate as above,
+        # expressed as the number you would compare against a tariff.
+        state: >
+          {{ (states('sensor.living_room_heater_charging_today') | float(0) * 1.56) | round(2) }}
+        availability: >
+          {{ has_value('sensor.living_room_heater_charging_today') }}
+
+  # Snapshots the charge the moment the cheap window closes. Over a winter this
+  # is the number that answers whether 7 hours of Economy 7 is actually enough.
+  - trigger:
+      - trigger: state
+        entity_id: binary_sensor.economy_7_window
+        from: "on"
+        to: "off"
+    sensor:
+      - name: Living room heater charge after Economy 7
+        unique_id: rointe_lr_charge_after_e7
+        unit_of_measurement: "%"
+        icon: mdi:battery-check
+        state: >
+          {{ states('sensor.living_room_sh_453ab4_charge') | float(0) | round(0) }}
+
+sensor:
+  - platform: history_stats
+    name: Living room heater charging today
+    unique_id: rointe_lr_charging_today
+    entity_id: binary_sensor.living_room_sh_453ab4_charging
+    state: "on"
+    type: time
+    start: "{{ today_at('00:00') }}"
+    end: "{{ now() }}"
+
+  - platform: integration
+    name: Living room heater charge energy
+    unique_id: rointe_lr_charge_energy
+    source: sensor.living_room_heater_charge_power
+    unit_prefix: k
+    unit_time: h
+    method: left
+    round: 2
+    # The source only changes at transitions, so nudge the integral along.
+    max_sub_interval: "00:05:00"

@@ -1,0 +1,116 @@
+{
+  "title": "Heating",
+  "path": "heating",
+  "icon": "mdi:radiator",
+  "type": "sections",
+  "max_columns": 2,
+  "sections": [
+    {
+      "type": "grid",
+      "column_span": 2,
+      "cards": [
+        {
+          "type": "heading",
+          "heading": "Living room heater",
+          "heading_style": "title",
+          "icon": "mdi:radiator"
+        },
+        {
+          "type": "custom:mushroom-chips-card",
+          "alignment": "center",
+          "chips": [
+            {
+              "type": "entity",
+              "entity": "binary_sensor.living_room_sh_453ab4_charging",
+              "icon_color": "blue"
+            },
+            {
+              "type": "entity",
+              "entity": "binary_sensor.economy_7_window",
+              "icon_color": "purple"
+            },
+            {
+              "type": "entity",
+              "entity": "binary_sensor.living_room_sh_453ab4_online",
+              "icon_color": "green"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "grid",
+      "cards": [
+        {
+          "type": "gauge",
+          "entity": "sensor.living_room_sh_453ab4_charge",
+          "name": "Stored charge",
+          "min": 0,
+          "max": 100,
+          "needle": true,
+          "severity": {
+            "green": 55,
+            "yellow": 25,
+            "red": 0
+          }
+        },
+        {
+          "type": "custom:mushroom-template-card",
+          "entity": "sensor.living_room_sh_453ab4_core_temperature",
+          "icon": "mdi:fire",
+          "icon_color": "orange",
+          "primary": "Core",
+          "secondary": "{{ states('sensor.living_room_sh_453ab4_core_temperature') }} °C"
+        },
+        {
+          "type": "custom:mushroom-template-card",
+          "entity": "sensor.temp_living_room_temperature",
+          "icon": "mdi:sofa",
+          "icon_color": "blue",
+          "primary": "Living room",
+          "secondary": "{{ states('sensor.temp_living_room_temperature') }} °C · {{ states('sensor.temp_living_room_humidity') }} %"
+        }
+      ]
+    },
+    {
+      "type": "grid",
+      "cards": [
+        {
+          "type": "custom:mushroom-climate-card",
+          "entity": "climate.living_room_sh_453ab4",
+          "name": "Heater",
+          "icon": "mdi:radiator",
+          "hvac_modes": [
+            "auto",
+            "heat",
+            "off"
+          ],
+          "show_temperature_control": true,
+          "collapsible_controls": false
+        },
+        {
+          "type": "custom:mushroom-entity-card",
+          "entity": "switch.living_room_sh_453ab4_boost",
+          "name": "Boost",
+          "icon": "mdi:fire",
+          "icon_color": "orange",
+          "secondary_info": "state",
+          "tap_action": {
+            "action": "toggle"
+          }
+        },
+        {
+          "type": "custom:mushroom-entity-card",
+          "entity": "switch.living_room_sh_453ab4_smart_charging",
+          "name": "Smart charging",
+          "icon": "mdi:auto-fix",
+          "icon_color": "green",
+          "secondary_info": "state",
+          "tap_action": {
+            "action": "toggle"
+          }
+        }
+      ]
+    }
+  ]
+}

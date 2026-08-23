@@ -101,6 +101,32 @@ automation:
 
 On Agile, run this after 16:00 when the following day's rates publish.
 
+## Example dashboard
+
+`examples/` carries the Home Assistant side of this setup.
+
+`examples/packages/rointe_heating.yaml` is a package of helper sensors the
+integration does not provide: an Economy 7 window that follows two time helpers,
+charge headroom against the ceiling you set, hours spent charging today, an
+estimated kWh from the 1560 W element, and a snapshot of the charge left the
+moment the cheap rate ends — the number that answers whether the cheap window
+actually fills the heater. Copy it into `config/packages/` and add
+
+```yaml
+homeassistant:
+  packages: !include_dir_named packages
+```
+
+to `configuration.yaml`.
+
+`examples/dashboards/heating.json` is a two-view dashboard — live state, charge
+and core temperature over 24 h and 7 d, room comparison, charge controls, and
+30-day statistics. `tablet-heating-view.json` is a trimmed single view for a wall
+tablet. Paste either into a dashboard's raw configuration editor. Both need
+[Mushroom](https://github.com/piitaya/lovelace-mushroom) and
+[ApexCharts Card](https://github.com/RomRider/apexcharts-card) from HACS, and both
+use the entity ids of one heater named SH.453AB4 — search and replace for yours.
+
 ## Limitations
 
 - **Cloud only.** No local API, no Matter. No internet means no control; the
