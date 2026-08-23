@@ -1,0 +1,6 @@
+{
+  "name": "Rointe Nexa",
+  "content_in_root": false,
+  "render_readme": true,
+  "homeassistant": "2024.3.0"
+}

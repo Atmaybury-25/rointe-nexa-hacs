@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Rointe Nexa",
+        "description": "Sign in with the account you use in the Rointe Nexa app.",
+        "data": { "email": "Email", "password": "Password" }
+      },
+      "reauth_confirm": {
+        "title": "Rointe Nexa",
+        "description": "The password for {email} is no longer accepted.",
+        "data": { "password": "Password" }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach Rointe. Check your connection and try again.",
+      "invalid_auth": "Rointe rejected that email and password.",
+      "unknown": "Unexpected error. Check the Home Assistant log."
+    },
+    "abort": {
+      "already_configured": "That account is already set up.",
+      "reauth_successful": "Signed in again successfully."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "charging": { "name": "Charging" },
+      "window_open": { "name": "Open window detected" },
+      "online": { "name": "Online" }
+    },
+    "number": {
+      "max_charge": { "name": "Maximum charge" },
+      "min_charge": { "name": "Minimum charge" },
+      "additional_charge": { "name": "Additional charge" }
+    },
+    "sensor": {
+      "charge_percentage": { "name": "Charge" },
+      "core_temperature": { "name": "Core temperature" },
+      "room_temperature": { "name": "Room temperature" },
+      "wifi_signal": { "name": "WiFi signal" }
+    },
+    "switch": {
+      "boost": { "name": "Boost" },
+      "smart_charge": { "name": "Smart charging" }
+    }
+  },
+  "services": {
+    "set_charge_hours": {
+      "name": "Set charge hours",
+      "description": "Choose which hours the heater may charge.",
+      "fields": {
+        "hours": { "name": "Hours", "description": "Hours of the day, 0-23." },
+        "days": { "name": "Days", "description": "Weekdays, 0 = Monday." }
+      }
+    },
+    "set_heating_schedule": {
+      "name": "Set heating schedule",
+      "description": "Set the 24-hour heating programme.",
+      "fields": {
+        "schedule": { "name": "Schedule", "description": "24 characters: C, E or O." },
+        "days": { "name": "Days", "description": "Weekdays, 0 = Monday." }
+      }
+    },
+    "boost": {
+      "name": "Boost",
+      "description": "Run at a set temperature for a set time.",
+      "fields": {
+        "temperature": { "name": "Temperature", "description": "Target while boosting." },
+        "duration": { "name": "Duration", "description": "Minutes to boost for." }
+      }
+    }
+  }
+}
