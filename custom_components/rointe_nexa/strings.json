@@ -4,12 +4,17 @@
       "user": {
         "title": "Rointe Nexa",
         "description": "Sign in with the account you use in the Rointe Nexa app.",
-        "data": { "email": "Email", "password": "Password" }
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
       },
       "reauth_confirm": {
         "title": "Rointe Nexa",
         "description": "The password for {email} is no longer accepted.",
-        "data": { "password": "Password" }
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -24,24 +29,57 @@
   },
   "entity": {
     "binary_sensor": {
-      "charging": { "name": "Charging" },
-      "window_open": { "name": "Open window detected" },
-      "online": { "name": "Online" }
+      "charging": {
+        "name": "Charging"
+      },
+      "window_open": {
+        "name": "Open window detected"
+      },
+      "online": {
+        "name": "Online"
+      }
     },
     "number": {
-      "max_charge": { "name": "Maximum charge" },
-      "min_charge": { "name": "Minimum charge" },
-      "additional_charge": { "name": "Additional charge" }
+      "max_charge": {
+        "name": "Maximum charge"
+      },
+      "min_charge": {
+        "name": "Minimum charge"
+      },
+      "additional_charge": {
+        "name": "Additional charge"
+      },
+      "comfort_temperature": {
+        "name": "Comfort temperature"
+      },
+      "eco_temperature": {
+        "name": "Eco temperature"
+      },
+      "anti_frost_temperature": {
+        "name": "Anti-frost temperature"
+      }
     },
     "sensor": {
-      "charge_percentage": { "name": "Charge" },
-      "core_temperature": { "name": "Core temperature" },
-      "room_temperature": { "name": "Room temperature" },
-      "wifi_signal": { "name": "WiFi signal" }
+      "charge_percentage": {
+        "name": "Charge"
+      },
+      "core_temperature": {
+        "name": "Core temperature"
+      },
+      "room_temperature": {
+        "name": "Room temperature"
+      },
+      "wifi_signal": {
+        "name": "WiFi signal"
+      }
     },
     "switch": {
-      "boost": { "name": "Boost" },
-      "smart_charge": { "name": "Smart charging" }
+      "boost": {
+        "name": "Boost"
+      },
+      "smart_charge": {
+        "name": "Smart charging"
+      }
     }
   },
   "services": {
@@ -49,24 +87,42 @@
       "name": "Set charge hours",
       "description": "Choose which hours the heater may charge.",
       "fields": {
-        "hours": { "name": "Hours", "description": "Hours of the day, 0-23." },
-        "days": { "name": "Days", "description": "Weekdays, 0 = Monday." }
+        "hours": {
+          "name": "Hours",
+          "description": "Hours of the day, 0-23."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Weekdays, 0 = Monday."
+        }
       }
     },
     "set_heating_schedule": {
       "name": "Set heating schedule",
       "description": "Set the 24-hour heating programme.",
       "fields": {
-        "schedule": { "name": "Schedule", "description": "24 characters: C, E or O." },
-        "days": { "name": "Days", "description": "Weekdays, 0 = Monday." }
+        "schedule": {
+          "name": "Schedule",
+          "description": "24 characters: C, E or O."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Weekdays, 0 = Monday."
+        }
       }
     },
     "boost": {
       "name": "Boost",
       "description": "Run at a set temperature for a set time.",
       "fields": {
-        "temperature": { "name": "Temperature", "description": "Target while boosting." },
-        "duration": { "name": "Duration", "description": "Minutes to boost for." }
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target while boosting."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Minutes to boost for."
+        }
       }
     }
   }

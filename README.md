@@ -94,6 +94,7 @@ get a user id from Rointe's REST API; the realtime layer never sees it.
 | `binary_sensor` Charging / Open window / Online | |
 | `number` Maximum / Minimum charge | |
 | `number` Additional charge | Hours the heater may charge *outside* its window. Set 0 to stop it wandering into expensive hours. |
+| `number` Comfort / Eco / Anti-frost temperature | The three stored setpoints the weekly programme switches between. The climate target temperature only writes whichever preset is active right now, so use these to change one that is not. |
 | `switch` Boost | The app's Boost — the timer, with its own temperature and duration. Remembers the mode it interrupted and hands it back when the boost ends, whether switched off or run out of time. |
 | `switch` Smart charging | Rointe's optimiser. **Turn it off** if you want Home Assistant to pick the charging hours. |
 
