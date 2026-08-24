@@ -21,7 +21,7 @@
           "chips": [
             {
               "type": "entity",
-              "entity": "binary_sensor.living_room_sh_453ab4_charging",
+              "entity": "binary_sensor.living_room_sh_abc123_charging",
               "icon_color": "blue"
             },
             {
@@ -31,7 +31,7 @@
             },
             {
               "type": "entity",
-              "entity": "binary_sensor.living_room_sh_453ab4_online",
+              "entity": "binary_sensor.living_room_sh_abc123_online",
               "icon_color": "green"
             }
           ]
@@ -43,7 +43,7 @@
       "cards": [
         {
           "type": "gauge",
-          "entity": "sensor.living_room_sh_453ab4_charge",
+          "entity": "sensor.living_room_sh_abc123_charge",
           "name": "Stored charge",
           "min": 0,
           "max": 100,
@@ -56,11 +56,11 @@
         },
         {
           "type": "custom:mushroom-template-card",
-          "entity": "sensor.living_room_sh_453ab4_core_temperature",
+          "entity": "sensor.living_room_sh_abc123_core_temperature",
           "icon": "mdi:fire",
           "icon_color": "orange",
           "primary": "Core",
-          "secondary": "{{ states('sensor.living_room_sh_453ab4_core_temperature') }} °C"
+          "secondary": "{{ states('sensor.living_room_sh_abc123_core_temperature') }} °C"
         },
         {
           "type": "custom:mushroom-template-card",
@@ -77,7 +77,7 @@
       "cards": [
         {
           "type": "custom:mushroom-climate-card",
-          "entity": "climate.living_room_sh_453ab4",
+          "entity": "climate.living_room_sh_abc123",
           "name": "Heater",
           "icon": "mdi:radiator",
           "hvac_modes": [
@@ -90,7 +90,7 @@
         },
         {
           "type": "custom:mushroom-entity-card",
-          "entity": "switch.living_room_sh_453ab4_boost",
+          "entity": "switch.living_room_sh_abc123_boost",
           "name": "Boost",
           "icon": "mdi:fire",
           "icon_color": "orange",
@@ -101,7 +101,7 @@
         },
         {
           "type": "custom:mushroom-entity-card",
-          "entity": "switch.living_room_sh_453ab4_smart_charging",
+          "entity": "switch.living_room_sh_abc123_smart_charging",
           "name": "Smart charging",
           "icon": "mdi:auto-fix",
           "icon_color": "green",

@@ -1,12 +1,14 @@
 {
   "domain": "rointe_nexa",
   "name": "Rointe Nexa",
-  "codeowners": [],
+  "codeowners": [
+    "@Atmaybury-25"
+  ],
   "config_flow": true,
-  "documentation": "https://github.com/atmaybury/rointe-nexa",
+  "documentation": "https://github.com/Atmaybury-25/rointe-nexa-hacs",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/atmaybury/rointe-nexa/issues",
+  "issue_tracker": "https://github.com/Atmaybury-25/rointe-nexa-hacs/issues",
   "requirements": [],
   "version": "0.1.0"
 }

@@ -22,12 +22,12 @@
               "chips": [
                 {
                   "type": "entity",
-                  "entity": "binary_sensor.living_room_sh_453ab4_charging",
+                  "entity": "binary_sensor.living_room_sh_abc123_charging",
                   "icon_color": "blue"
                 },
                 {
                   "type": "entity",
-                  "entity": "switch.living_room_sh_453ab4_boost",
+                  "entity": "switch.living_room_sh_abc123_boost",
                   "icon_color": "orange"
                 },
                 {
@@ -37,19 +37,19 @@
                 },
                 {
                   "type": "entity",
-                  "entity": "binary_sensor.living_room_sh_453ab4_open_window_detected",
+                  "entity": "binary_sensor.living_room_sh_abc123_open_window_detected",
                   "icon_color": "red"
                 },
                 {
                   "type": "entity",
-                  "entity": "binary_sensor.living_room_sh_453ab4_online",
+                  "entity": "binary_sensor.living_room_sh_abc123_online",
                   "icon_color": "green"
                 }
               ]
             },
             {
               "type": "custom:mushroom-climate-card",
-              "entity": "climate.living_room_sh_453ab4",
+              "entity": "climate.living_room_sh_abc123",
               "name": "Living room",
               "icon": "mdi:radiator",
               "hvac_modes": [
@@ -63,7 +63,7 @@
             },
             {
               "type": "gauge",
-              "entity": "sensor.living_room_sh_453ab4_charge",
+              "entity": "sensor.living_room_sh_abc123_charge",
               "name": "Stored charge",
               "min": 0,
               "max": 100,
@@ -76,13 +76,13 @@
             },
             {
               "type": "tile",
-              "entity": "sensor.living_room_sh_453ab4_core_temperature",
+              "entity": "sensor.living_room_sh_abc123_core_temperature",
               "name": "Core temperature",
               "color": "orange"
             },
             {
               "type": "tile",
-              "entity": "sensor.living_room_sh_453ab4_room_temperature",
+              "entity": "sensor.living_room_sh_abc123_room_temperature",
               "name": "Room (heater probe)",
               "color": "blue"
             },
@@ -171,7 +171,7 @@
                   }
                 },
                 {
-                  "entity": "binary_sensor.living_room_sh_453ab4_charging",
+                  "entity": "binary_sensor.living_room_sh_abc123_charging",
                   "name": "Charging",
                   "yaxis_id": "pct",
                   "type": "area",
@@ -186,7 +186,7 @@
                   }
                 },
                 {
-                  "entity": "sensor.living_room_sh_453ab4_charge",
+                  "entity": "sensor.living_room_sh_abc123_charge",
                   "name": "Charge",
                   "yaxis_id": "pct",
                   "type": "line",
@@ -194,7 +194,7 @@
                   "stroke_width": 3
                 },
                 {
-                  "entity": "sensor.living_room_sh_453ab4_core_temperature",
+                  "entity": "sensor.living_room_sh_abc123_core_temperature",
                   "name": "Core",
                   "yaxis_id": "temp",
                   "type": "line",
@@ -260,7 +260,7 @@
               "hours_to_show": 24,
               "entities": [
                 {
-                  "entity": "sensor.living_room_sh_453ab4_room_temperature",
+                  "entity": "sensor.living_room_sh_abc123_room_temperature",
                   "name": "Heater probe"
                 },
                 {
@@ -268,7 +268,7 @@
                   "name": "Zigbee sensor"
                 },
                 {
-                  "entity": "climate.living_room_sh_453ab4",
+                  "entity": "climate.living_room_sh_abc123",
                   "name": "Heater mode"
                 }
               ]
@@ -308,26 +308,26 @@
               "type": "entities",
               "entities": [
                 {
-                  "entity": "number.living_room_sh_453ab4_maximum_charge",
+                  "entity": "number.living_room_sh_abc123_maximum_charge",
                   "name": "Maximum charge"
                 },
                 {
-                  "entity": "number.living_room_sh_453ab4_minimum_charge",
+                  "entity": "number.living_room_sh_abc123_minimum_charge",
                   "name": "Minimum charge"
                 },
                 {
-                  "entity": "number.living_room_sh_453ab4_additional_charge",
+                  "entity": "number.living_room_sh_abc123_additional_charge",
                   "name": "Additional charge (hours)"
                 },
                 {
                   "type": "divider"
                 },
                 {
-                  "entity": "switch.living_room_sh_453ab4_smart_charging",
+                  "entity": "switch.living_room_sh_abc123_smart_charging",
                   "name": "Rointe's smart charging"
                 },
                 {
-                  "entity": "switch.living_room_sh_453ab4_boost",
+                  "entity": "switch.living_room_sh_abc123_boost",
                   "name": "Boost"
                 }
               ]
@@ -359,7 +359,7 @@
               ],
               "footer": {
                 "type": "graph",
-                "entity": "sensor.living_room_sh_453ab4_charge",
+                "entity": "sensor.living_room_sh_abc123_charge",
                 "hours_to_show": 24
               }
             },
@@ -380,12 +380,12 @@
             },
             {
               "type": "tile",
-              "entity": "binary_sensor.living_room_sh_453ab4_online",
+              "entity": "binary_sensor.living_room_sh_abc123_online",
               "name": "Cloud connection"
             },
             {
               "type": "tile",
-              "entity": "binary_sensor.living_room_sh_453ab4_open_window_detected",
+              "entity": "binary_sensor.living_room_sh_abc123_open_window_detected",
               "name": "Open window detected"
             },
             {
@@ -395,7 +395,7 @@
             },
             {
               "type": "markdown",
-              "content": "### Writing a charge window\n\n```yaml\naction: rointe_nexa.set_charge_hours\ntarget:\n  entity_id: climate.living_room_sh_453ab4\ndata:\n  hours: [1, 2, 3, 4, 5, 6]   # each hour it MAY charge\n  days: [0, 1, 2, 3, 4]       # Mon-Fri, omit for every day\n```\n\nHour numbers are the hour that *starts* then, so `[2]` means 02:00–03:00.\nCommands are zone-scoped: two heaters in one Nexa zone share settings, so\ngive each its own zone in the app."
+              "content": "### Writing a charge window\n\n```yaml\naction: rointe_nexa.set_charge_hours\ntarget:\n  entity_id: climate.living_room_sh_abc123\ndata:\n  hours: [1, 2, 3, 4, 5, 6]   # each hour it MAY charge\n  days: [0, 1, 2, 3, 4]       # Mon-Fri, omit for every day\n```\n\nHour numbers are the hour that *starts* then, so `[2]` means 02:00–03:00.\nCommands are zone-scoped: two heaters in one Nexa zone share settings, so\ngive each its own zone in the app."
             }
           ]
         }
@@ -485,7 +485,7 @@
                   }
                 },
                 {
-                  "entity": "binary_sensor.living_room_sh_453ab4_charging",
+                  "entity": "binary_sensor.living_room_sh_abc123_charging",
                   "name": "Charging",
                   "yaxis_id": "pct",
                   "type": "area",
@@ -500,7 +500,7 @@
                   }
                 },
                 {
-                  "entity": "sensor.living_room_sh_453ab4_charge",
+                  "entity": "sensor.living_room_sh_abc123_charge",
                   "name": "Charge",
                   "yaxis_id": "pct",
                   "type": "line",
@@ -512,7 +512,7 @@
                   }
                 },
                 {
-                  "entity": "sensor.living_room_sh_453ab4_core_temperature",
+                  "entity": "sensor.living_room_sh_abc123_core_temperature",
                   "name": "Core",
                   "yaxis_id": "temp",
                   "type": "line",
@@ -531,7 +531,7 @@
               "hours_to_show": 72,
               "entities": [
                 {
-                  "entity": "binary_sensor.living_room_sh_453ab4_charging",
+                  "entity": "binary_sensor.living_room_sh_abc123_charging",
                   "name": "Charging"
                 },
                 {
@@ -539,7 +539,7 @@
                   "name": "Cheap rate"
                 },
                 {
-                  "entity": "switch.living_room_sh_453ab4_boost",
+                  "entity": "switch.living_room_sh_abc123_boost",
                   "name": "Boost"
                 }
               ]
@@ -560,7 +560,7 @@
               "type": "statistics-graph",
               "title": "Charge — daily min/mean/max",
               "entities": [
-                "sensor.living_room_sh_453ab4_charge"
+                "sensor.living_room_sh_abc123_charge"
               ],
               "days_to_show": 30,
               "period": "day",
@@ -575,7 +575,7 @@
               "type": "statistics-graph",
               "title": "Core temp — daily min/mean/max",
               "entities": [
-                "sensor.living_room_sh_453ab4_core_temperature"
+                "sensor.living_room_sh_abc123_core_temperature"
               ],
               "days_to_show": 30,
               "period": "day",
@@ -590,7 +590,7 @@
               "type": "statistics-graph",
               "title": "Room temp — daily mean",
               "entities": [
-                "sensor.living_room_sh_453ab4_room_temperature",
+                "sensor.living_room_sh_abc123_room_temperature",
                 "sensor.temp_living_room_temperature"
               ],
               "days_to_show": 30,
