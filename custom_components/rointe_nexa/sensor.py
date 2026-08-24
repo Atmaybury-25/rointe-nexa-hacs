@@ -82,6 +82,38 @@ SENSORS: tuple[RointeSensorDescription, ...] = (
 )
 
 
+# Fields nobody has explained yet, exposed so they can be watched over time
+# instead of guessed at. All disabled by default - enable them only if you are
+# trying to work out what a field means, then tell us in an issue.
+#
+# The interesting question these are here to answer: several Onyx units have a
+# current transformer around the incoming feed, so the heater is measuring
+# something. None of these move while it sits idle, and the Rointe app never
+# reads any of them - the consumption page is nominal power times time, which is
+# why it is labelled indicative. Watching them across a real charge cycle is the
+# way to find out whether any of them carries a measurement.
+UNMAPPED: tuple[RointeSensorDescription, ...] = tuple(
+    RointeSensorDescription(
+        key=key,
+        name=f"Raw {key}",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        icon="mdi:help-rhombus-outline",
+        value_fn=_float(key),
+    )
+    for key in (
+        "charging_consuption",
+        "nominal_effective_power",
+        "power_supply_details",
+        "status_warming",
+        "tpfl",
+        "tpsf",
+        "mgmt_modules",
+    )
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
@@ -89,7 +121,7 @@ async def async_setup_entry(
     async_add_entities(
         RointeSensor(coordinator, serial, description)
         for serial in coordinator.data
-        for description in SENSORS
+        for description in SENSORS + UNMAPPED
     )
 
 
