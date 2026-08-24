@@ -8,6 +8,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.restore_state import (
     ExtraStoredData,
     RestoredExtraData,
@@ -83,10 +84,20 @@ class RointeBoostSwitch(RointeEntity, SwitchEntity, RestoreEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         duration = self.read_commanded("timer_config_time")
+        # timer_time is the boost end as a UTC epoch. It is left behind stale
+        # once a boost ends, so only report it while one is actually running.
+        ends_at = None
+        if self.is_on:
+            raw = self.read_commanded("timer_time")
+            try:
+                ends_at = dt_util.utc_from_timestamp(int(raw)).isoformat() if raw else None
+            except (TypeError, ValueError):
+                ends_at = None
         device = self.device
         return {
             "boost_temperature": self.read_commanded("timer_config_temp"),
             "boost_minutes": int(duration) // 60 if duration else None,
+            "boost_ends_at": ends_at,
             "mode_before_boost": device.mode_before_boost if device else None,
         }
 

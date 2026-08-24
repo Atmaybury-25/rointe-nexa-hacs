@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
+from homeassistant.util import dt as dt_util
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -83,6 +85,21 @@ class RointeCoordinator(DataUpdateCoordinator[dict[str, RointeDevice]]):
         payload: dict = {"timer_mode": True, "mode": MODE_MANUAL}
         if extra:
             payload.update(extra)
+        # The app writes the boost end time as an absolute UTC epoch, next to
+        # the configured duration. Confirmed 24 Aug 2026: a 2 h boost set at
+        # 12:32 London wrote timer_time for 14:32:07 exactly. Without it the
+        # heater has no deadline of its own, only whatever is left over from the
+        # last boost - which is stale, and may already be in the past.
+        duration = payload.get(
+            "timer_config_time", device.get_commanded("timer_config_time")
+        )
+        temperature = payload.get(
+            "timer_config_temp", device.get_commanded("timer_config_temp")
+        )
+        if duration:
+            payload["timer_time"] = int(dt_util.utcnow().timestamp()) + int(duration)
+        if temperature is not None:
+            payload["timer_temp"] = temperature
         await self.async_command(device, payload)
 
     async def async_end_boost(self, device: RointeDevice) -> None:
