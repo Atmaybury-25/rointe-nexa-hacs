@@ -18,6 +18,17 @@ input_datetime:
     has_time: true
     initial: "07:30:00"
 
+input_number:
+  heater_storage_capacity:
+    name: Heater storage capacity
+    icon: mdi:battery-high
+    min: 1
+    max: 40
+    step: 0.5
+    unit_of_measurement: kWh
+    mode: box
+    initial: 10
+
 template:
   - binary_sensor:
       - name: Economy 7 window
@@ -51,32 +62,74 @@ template:
         availability: >
           {{ has_value('sensor.living_room_sh_abc123_charge') }}
 
-      - name: Living room heater charge power
-        unique_id: rointe_lr_charge_power
-        unit_of_measurement: W
-        device_class: power
+      - name: Living room heater stored energy
+        unique_id: rointe_lr_stored_energy
+        unit_of_measurement: kWh
+        device_class: energy_storage
         state_class: measurement
-        icon: mdi:flash
-        # ESTIMATED, not metered. The heater reports no power, so this is its
-        # 1560 W nominal element treated as on or off. Close enough to size a
-        # night's charge; do not treat it as a meter reading.
+        icon: mdi:battery-high
+        # Charge percentage against the capacity helper above. Rointe report
+        # charging_consuption: 10000 on this model, which reads as 10 kWh of
+        # usable storage and fits both the overnight gain and the idle
+        # discharge rate. Correct the helper if you ever meter the circuit.
         state: >
-          {{ 1560 if is_state('binary_sensor.living_room_sh_abc123_charging', 'on') else 0 }}
+          {{ ((states('sensor.living_room_sh_abc123_charge') | float(0) / 100)
+              * (states('input_number.heater_storage_capacity') | float(10))) | round(2) }}
         availability: >
-          {{ has_value('binary_sensor.living_room_sh_abc123_charging') }}
+          {{ has_value('sensor.living_room_sh_abc123_charge') }}
 
+
+  # Charge at the moment a charging session starts, so the session's net gain
+  # can be measured end to end.
+  #
+  # Summing every rise in charge percentage does NOT work: the signal swings by
+  # tens of percent within an hour around the charge window, so on 24 Aug 2026
+  # it accumulated 171 % of "gain" on a day whose net change was minus 8. Taking
+  # the two endpoints of a session sidesteps all of that.
+  - trigger:
+      - trigger: state
+        entity_id: binary_sensor.living_room_sh_abc123_charging
+        from: "off"
+        to: "on"
+    sensor:
+      - name: Living room heater charge at session start
+        unique_id: rointe_lr_charge_at_session_start
+        unit_of_measurement: "%"
+        icon: mdi:ray-start
+        state: >
+          {{ states('sensor.living_room_sh_abc123_charge') | float(0) | round(0) }}
+
+  # Energy taken in today: the net percentage gained across each completed
+  # charging session, against the capacity helper. Still an ESTIMATE - it
+  # inherits whatever charge_percentage really means, and that is not fully
+  # understood. Time-charging times nameplate power was worse: the heater is an
+  # inverter and modulates, so that overstated it by roughly six times.
+  - trigger:
+      - trigger: state
+        entity_id: binary_sensor.living_room_sh_abc123_charging
+        from: "on"
+        to: "off"
+        id: session_end
+      - trigger: time
+        at: "00:00:00"
+        id: midnight
+    sensor:
       - name: Living room heater charge energy today
         unique_id: rointe_lr_charge_energy_today
         unit_of_measurement: kWh
         device_class: energy
         state_class: total_increasing
         icon: mdi:lightning-bolt
-        # Hours charged today times the 1560 W element. Same estimate as above,
-        # expressed as the number you would compare against a tariff.
         state: >
-          {{ (states('sensor.living_room_heater_charging_today') | float(0) * 1.56) | round(2) }}
-        availability: >
-          {{ has_value('sensor.living_room_heater_charging_today') }}
+          {% if trigger.id == 'midnight' %}
+            0
+          {% else %}
+            {% set started = states('sensor.living_room_heater_charge_at_session_start') | float(-1) %}
+            {% set ended = states('sensor.living_room_sh_abc123_charge') | float(-1) %}
+            {% set cap = states('input_number.heater_storage_capacity') | float(10) %}
+            {% set gain = (ended - started) if (started >= 0 and ended >= 0) else 0 %}
+            {{ ((this.state | float(0)) + ([gain, 0] | max) / 100 * cap) | round(2) }}
+          {% endif %}
 
   # Snapshots the charge the moment the cheap window closes. Over a winter this
   # is the number that answers whether 7 hours of Economy 7 is actually enough.
@@ -102,14 +155,3 @@ sensor:
     type: time
     start: "{{ today_at('00:00') }}"
     end: "{{ now() }}"
-
-  - platform: integration
-    name: Living room heater charge energy
-    unique_id: rointe_lr_charge_energy
-    source: sensor.living_room_heater_charge_power
-    unit_prefix: k
-    unit_time: h
-    method: left
-    round: 2
-    # The source only changes at transitions, so nudge the integral along.
-    max_sub_interval: "00:05:00"
