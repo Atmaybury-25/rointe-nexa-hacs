@@ -64,6 +64,11 @@ back from the zone node, and anything **physical** from the device node. Mix the
 up and a setting the user just changed appears to snap back to its old value for
 several minutes, because the heater has not caught up yet.
 
+**[docs/onyx-field-map.md](docs/onyx-field-map.md) is the full field map** — all
+97 keys the heater reports, what each one means where it is known, which are
+vestigial shared firmware, and which are still unexplained. It is the reference
+this integration was built from, and the place to look before adding anything.
+
 ## Install
 
 **HACS (recommended).** HACS → three-dot menu → *Custom repositories* → add this
