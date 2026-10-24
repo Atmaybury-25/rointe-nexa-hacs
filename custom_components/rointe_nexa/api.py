@@ -444,18 +444,28 @@ class RointeClient:
         if not self._rest_token:
             await self.async_login()
         url = f"{REST_BASE}/{path.lstrip('/')}"
-        status, body = await self._request(
-            method, url, headers={"token": self._rest_token}, **kwargs
-        )
+        # The app sends Content-Type: application/json even on the body-less
+        # holidaysMode PATCH.
+        headers = {"token": self._rest_token, "Content-Type": "application/json"}
+        status, body = await self._request(method, url, headers=headers, **kwargs)
         if status == 401:
             await self.async_login()
-            status, body = await self._request(
-                method, url, headers={"token": self._rest_token}, **kwargs
-            )
+            headers["token"] = self._rest_token
+            status, body = await self._request(method, url, headers=headers, **kwargs)
         if status == 401:
             raise RointeAuthError(f"{method} /{path}: token refused")
         if not 200 <= status < 300:
             raise RointeConnectionError(f"{method} /{path}: HTTP {status} {body}")
+        data = body.get("data") if isinstance(body, dict) else None
+        _LOGGER.debug(
+            "REST %s /%s -> %s%s",
+            method,
+            path,
+            status,
+            f" holidaysMode={data.get('holidaysMode')}"
+            if isinstance(data, dict) and "holidaysMode" in data
+            else "",
+        )
         return body
 
     # -- inventory --------------------------------------------------------
@@ -621,9 +631,25 @@ class RointeClient:
             "PUT", f"installations/{installation_id}/holidays", json={"holidays": holidays}
         )
 
-    async def async_toggle_travel_mode(self, installation_id: str) -> None:
-        """Flip the installation's `holidaysMode` flag."""
-        await self._rest("PATCH", f"installations/{installation_id}/holidaysMode")
+    async def async_toggle_travel_mode(self, installation_id: str) -> bool | None:
+        """Flip the installation's `holidaysMode` flag; return the new value.
+
+        The response is the installation record, so the new state is read from
+        it rather than assumed.
+        """
+        body = await self._rest("PATCH", f"installations/{installation_id}/holidaysMode")
+        data = body.get("data", body) if isinstance(body, dict) else None
+        if isinstance(data, dict) and "holidaysMode" in data:
+            return bool(data["holidaysMode"])
+        return None
+
+    async def async_set_travel_mode_flag(self, installation_id: str, wanted: bool) -> bool | None:
+        """Drive the toggle to a wanted state, reading the result each time."""
+        state = await self.async_toggle_travel_mode(installation_id)
+        if state is not None and state != wanted:
+            # Our idea of the starting state was stale; one more flip lands it.
+            state = await self.async_toggle_travel_mode(installation_id)
+        return state
 
     async def async_clear_travel_mode(
         self, installation_id: str, *, mode_active: bool
@@ -631,7 +657,7 @@ class RointeClient:
         """Empty the period list and, as the app does, switch the mode off."""
         await self.async_set_travel_periods(installation_id, [], "UTC")
         if mode_active:
-            await self.async_toggle_travel_mode(installation_id)
+            await self.async_set_travel_mode_flag(installation_id, False)
 
 
 def _as_items(container: Any) -> list[Any]:

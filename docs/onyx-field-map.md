@@ -158,7 +158,7 @@ either RTDB node:
 PUT   /installations/{id}/holidays
       {"holidays": [{"from": "2026-10-09 23:00:00",
                      "to":   "2026-10-15 08:00:00"}]}
-PATCH /installations/{id}/holidaysMode        (no body; used to switch it off)
+PATCH /installations/{id}/holidaysMode        (no body; TOGGLES the master flag)
 ```
 
 Times are strings, `yyyy-MM-dd HH:mm:ss`, in **UTC** (the app converts to
@@ -166,8 +166,12 @@ Times are strings, `yyyy-MM-dd HH:mm:ss`, in **UTC** (the app converts to
 HTTP 400 "This value should be of type string".
 
 `to` may be `null` (indefinite) on the last period only. The installation
-record carries `holidays` and `holidaysMode` back. Rointe's backend switches
-the products off for each period ("switch off your products", in the app).
+record carries `holidays` and `holidaysMode` back.
+
+Storing periods does **not** set `holidaysMode`; the PATCH flips it, and the
+app calls it from its master switch in either direction. With the flag on and
+a period running, Rointe's backend writes `power: 1` (standby) to every zone
+node, and the heaters follow within a poll or two. Confirmed live, 24 Oct 2026.
 
 ## What the Android app enforces
 
