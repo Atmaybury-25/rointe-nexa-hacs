@@ -8,23 +8,30 @@ release it at another, so the whole game is deciding *when* to charge and *how
 much*. That decision wants to be made against half-hourly prices and a room
 temperature sensor, not by a wall dial. This integration exposes the levers that
 make that possible: charge percentage, charge ceiling and floor, the weekly
-charging schedule, boost, and Rointe's own optimiser.
+charging schedule, boost, travel mode, and Rointe's own optimiser.
+
+![Stored charge for three Onyx heaters over 24 hours, with the Economy 7 window shaded](docs/images/charge-24h.png)
+
+*Three Onyx heaters over one day: all three charge through the shaded Economy 7
+window, then release it through the day. Built from this integration's sensors
+and the example dashboard below.*
 
 ## Read this before installing
 
 **This is vibe-coded.** It was written in a single long session by Claude,
-driven by someone who owns one of these heaters, against an API that Rointe do
+driven by someone who owns three of these heaters, against an API that Rointe do
 not document and have never published. Nothing here is blessed by Rointe.
 
 What that means in practice:
 
-- **It works, but it is a work in progress.** It has been running against exactly
-  one heater, one account, and one firmware version. Everything in it was
-  verified against that heater, and nothing in it has been verified against
+- **It works, but it is a work in progress.** It has been running daily since
+  August 2026 against **three Onyx heaters of different sizes**, each in its own
+  zone, on one account and one firmware version (11404). Everything in it was
+  verified against those heaters, and nothing in it has been verified against
   yours.
 - **Expect bugs.** Especially around device types this has never seen — radiators,
-  towel rails, water heaters, multi-heater zones, anything other than one Onyx in
-  one zone.
+  towel rails, water heaters, multi-heater zones, anything other than one Onyx per
+  zone.
 - **The field map is incomplete.** 115 fields come back from the device node and
   a good few are still unidentified. A couple of guesses in here are labelled as
   guesses; the rest were confirmed by changing something in the Nexa app and
@@ -43,7 +50,8 @@ a dump of its RTDB node would be genuinely useful.
 The two existing community integrations target Rointe's **v3** platform. Accounts
 created on **v4** (`api-v4-prod.rointe.io`) cannot authenticate against them at
 all, and storage heaters are not modelled anywhere. This was written after
-reverse-engineering the v4 web app against a live Onyx.
+reverse-engineering the v4 web app and the Nexa Android app against live Onyx
+heaters.
 
 Three things it does differently, none of which are guessable:
 
@@ -68,6 +76,23 @@ several minutes, because the heater has not caught up yet.
 97 keys the heater reports, what each one means where it is known, which are
 vestigial shared firmware, and which are still unexplained. It is the reference
 this integration was built from, and the place to look before adding anything.
+
+## In use
+
+What it has actually been good for, on three heaters through autumn 2026:
+
+- **Seeing whether the cheap window fills the heaters.** Rointe's app shows a
+  number; Home Assistant shows the curve. The chart above answered the sizing
+  question in one night: two heaters reached 90 %+ on Economy 7, one topped out
+  at about 75 %.
+- **One place for all three.** Stored charge, core temperature, mode and
+  today's charging per heater, plus a whole-house stored-heat figure.
+- **Holidays without thinking.** A date-scheduled helper puts the house into
+  Rointe's own travel mode and brings the heaters back the evening before the
+  return, so they charge for the night you get home.
+- **Charge control from automations,** within the same limits the app enforces.
+
+![Heating overview: stored charge, core temperature and mode for three heaters](docs/images/dashboard-overview.png)
 
 ## Install
 
@@ -215,6 +240,8 @@ homeassistant:
 
 to `configuration.yaml`.
 
+![Charge control card: smart-charge limits, additional charge, smart charging and boost](docs/images/charge-control.png)
+
 `examples/dashboards/heating.json` is a two-view dashboard — live state, charge
 and core temperature over 24 h and 7 d, room comparison, charge controls, and
 30-day statistics. `tablet-heating-view.json` is a trimmed single view for a wall
@@ -249,7 +276,8 @@ standing between them and a cold house.
 - Writable settings are read back from the **zone** node, which the app writes
   and the heater catches up to a few minutes later; physical readings come from
   the **device** node.
-- Only tested against one Onyx storage heater on one v4 account.
+- Tested against three Onyx storage heaters on one v4 account. No other Rointe
+  product has been tried.
 - Unofficial and unaffiliated with Rointe.
 
 ## Contributing
