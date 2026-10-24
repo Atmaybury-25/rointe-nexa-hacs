@@ -168,10 +168,17 @@ HTTP 400 "This value should be of type string".
 `to` may be `null` (indefinite) on the last period only. The installation
 record carries `holidays` and `holidaysMode` back.
 
-Storing periods does **not** set `holidaysMode`; the PATCH flips it, and the
-app calls it from its master switch in either direction. With the flag on and
-a period running, Rointe's backend writes `power: 1` (standby) to every zone
-node, and the heaters follow within a poll or two. Confirmed live, 24 Oct 2026.
+Storing periods does **not** set `holidaysMode`; the PATCH flips it (the app
+calls it from its master switch in either direction), and PUTting an empty
+list clears it. Both responses carry the installation with the new flag.
+
+With the flag on, Rointe's backend writes `power: 1` (standby) to every zone
+node at the start of a period and `power: 2` at its end, and the heaters follow
+within a poll or two. The flag stays on after the period ends. Confirmed live,
+24 Oct 2026 (a 14-minute test period, 12:11-12:25 BST).
+
+The installation's `timeCountry` is a display label ("Britain (UK)"), not an
+IANA zone.
 
 ## What the Android app enforces
 

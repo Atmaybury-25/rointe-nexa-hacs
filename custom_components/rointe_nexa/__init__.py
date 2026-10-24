@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from datetime import datetime, tzinfo
 
 import voluptuous as vol
 
@@ -19,6 +18,7 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import dt as dt_util
 
 from .api import (
     HEATING_CHARS,
@@ -175,29 +175,13 @@ def _installations_for_call(hass: HomeAssistant, call: ServiceCall):
     return out
 
 
-def _installation_zone(hass: HomeAssistant, device) -> tuple[str, ZoneInfo]:
-    """The installation's IANA time zone, falling back to Home Assistant's."""
-    for name in (device.installation.get("timeCountry"), hass.config.time_zone):
-        if not name:
-            continue
-        try:
-            return str(name), ZoneInfo(str(name))
-        except (ZoneInfoNotFoundError, ValueError):
-            continue
-    return "UTC", ZoneInfo("UTC")
-
-
-def _to_wall_clock(value: datetime | None, zone: ZoneInfo) -> datetime | None:
-    """A naive wall-clock time in the installation's zone.
-
-    A time given without an offset is taken as local to the installation,
-    which is what anyone typing "Friday 09:00" means.
-    """
+def _to_aware(value: datetime | None, zone: tzinfo) -> datetime | None:
+    """A time given without an offset is local to Home Assistant's time zone,
+    which is what anyone typing "Friday 09:00" means. (The installation's own
+    `timeCountry` is a display label such as "Britain (UK)", not a zone.)"""
     if value is None:
         return None
-    if value.tzinfo is not None:
-        value = value.astimezone(zone)
-    return value.replace(tzinfo=None)
+    return value.replace(tzinfo=zone) if value.tzinfo is None else value
 
 
 def _register_services(hass: HomeAssistant) -> None:
@@ -248,35 +232,29 @@ def _register_services(hass: HomeAssistant) -> None:
         targets = _installations_for_call(hass, call)
         if not targets:
             raise ServiceValidationError("no Rointe heater in that target")
+        zone = dt_util.get_default_time_zone()
+        start = _to_aware(call.data[ATTR_START], zone)
+        end = _to_aware(call.data.get(ATTR_END), zone)
         for coordinator, device in targets:
-            zone_name, zone = _installation_zone(hass, device)
-            start = _to_wall_clock(call.data[ATTR_START], zone)
-            end = _to_wall_clock(call.data.get(ATTR_END), zone)
             try:
-                await coordinator.client.async_set_travel_periods(
-                    device.installation_id, [(start, end)], zone_name
+                await coordinator.client.async_set_travel_mode(
+                    device.installation_id, [(start, end)]
                 )
-                # The flag is a toggle, so only flip it when it is off.
-                if not device.installation.get("holidaysMode"):
-                    await coordinator.client.async_set_travel_mode_flag(
-                        device.installation_id, True
-                    )
             except ValueError as err:
                 raise ServiceValidationError(str(err)) from err
             except RointeError as err:
                 raise HomeAssistantError(f"Rointe refused travel mode: {err}") from err
-            await coordinator.async_rediscover()
+            finally:
+                await coordinator.async_rediscover()
 
     async def _clear_travel_mode(call: ServiceCall) -> None:
         for coordinator, device in _installations_for_call(hass, call):
             try:
-                await coordinator.client.async_clear_travel_mode(
-                    device.installation_id,
-                    mode_active=bool(device.installation.get("holidaysMode")),
-                )
+                await coordinator.client.async_clear_travel_mode(device.installation_id)
             except RointeError as err:
                 raise HomeAssistantError(f"Rointe refused to clear travel mode: {err}") from err
-            await coordinator.async_rediscover()
+            finally:
+                await coordinator.async_rediscover()
 
     hass.services.async_register(DOMAIN, SERVICE_BOOST, _boost, BOOST_SCHEMA)
     hass.services.async_register(

@@ -91,8 +91,8 @@ set_travel_mode:
     start:
       name: Start
       description: >-
-        When travel mode starts. A time without an offset is taken as local
-        to the installation.
+        When travel mode starts. A time without an offset is taken as
+        Home Assistant's local time.
       required: true
       example: "2026-12-20 08:00:00"
       selector:

@@ -36,7 +36,6 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from typing import Any
 
 import aiohttp
@@ -191,18 +190,25 @@ def validate_charge_limits(minimum: int, maximum: int) -> tuple[int, int]:
     return minimum, maximum
 
 
-def format_utc_datetime(value: datetime, time_zone: str) -> str:
+def format_utc_datetime(value: datetime) -> str:
     """A time the way Rointe's REST API wants it: "yyyy-MM-dd HH:mm:ss" in UTC.
 
     The app's ZonedDateTimeSerializer (kmmcore DatesFormatter) formats with
-    that pattern after converting to Etc/UTC. A naive ``value`` is a wall-clock
-    time in ``time_zone``; an aware one is converted as-is. Sending the
-    {date, zone} object form is rejected with HTTP 400 ("This value should be
-    of type string") - confirmed against the live API, 24 Oct 2026.
+    that pattern after converting to Etc/UTC. Sending the {date, zone} object
+    form is rejected with HTTP 400 ("This value should be of type string") -
+    confirmed against the live API, 24 Oct 2026. ``value`` must be aware.
     """
     if value.tzinfo is None:
-        value = value.replace(tzinfo=ZoneInfo(time_zone))
+        raise ValueError("travel-mode times must carry a time zone")
     return value.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _holidays_mode(body: Any) -> bool | None:
+    """The `holidaysMode` flag from an installation response, if present."""
+    data = body.get("data", body) if isinstance(body, dict) else None
+    if isinstance(data, dict) and "holidaysMode" in data:
+        return bool(data["holidaysMode"])
+    return None
 
 
 @dataclass
@@ -583,34 +589,32 @@ class RointeClient:
     # -- travel mode ------------------------------------------------------
     #
     # The app's "Travel mode" is not a device field at all. It is a list of
-    # periods stored on the installation through the REST API, and Rointe's
-    # backend switches the products off for each period. Established from the
-    # Android app (HolidaysModeViewModel -> InstallationInteractor ->
-    # InstallationRepository), Oct 2026:
+    # periods stored on the installation through the REST API, plus a master
+    # flag, and Rointe's backend switches the products to standby for each
+    # period. From the Android app (HolidaysModeViewModel, MasterThermostat-
+    # ViewModel -> InstallationRepository), confirmed live 24 Oct 2026:
     #
     #     PUT   installations/{id}/holidays
     #           {"holidays": [{"from": "2026-10-09 23:00:00",
     #                          "to":   "2026-10-15 08:00:00" | null}]}
-    #           times in UTC; null = indefinite
+    #           times in UTC; null = indefinite. An empty list also clears
+    #           the flag. Response: the installation, with `holidaysMode`.
     #     PATCH installations/{id}/holidaysMode            no body - a TOGGLE
+    #           Response: the installation, with the new `holidaysMode`.
     #
-    # `holidaysMode` is the master on/off. The PATCH flips it: the app's
-    # master-thermostat screen calls it whenever the travel switch differs
-    # from its starting state, in either direction, and the travel-mode
-    # screen calls it to switch off after emptying the period list. Storing
-    # periods alone does not set the flag (observed live, 24 Oct 2026).
+    # Storing periods does not set the flag; it has to be toggled on. With it
+    # on, the backend writes `power: 1` to each zone at the start of a period
+    # and `power: 2` at the end. The flag stays on after the period ends.
 
     async def async_set_travel_periods(
         self,
         installation_id: str,
         periods: list[tuple[datetime, datetime | None]],
-        time_zone: str,
-    ) -> Any:
-        """Replace the installation's travel-mode periods.
+    ) -> bool | None:
+        """Replace the installation's travel periods; return the flag after.
 
-        Times are wall-clock times in ``time_zone`` (an IANA name - the
-        installation's own, as the app uses). An end of None is indefinite and
-        is only allowed on the last period.
+        Times must be aware. An end of None is indefinite and is only allowed
+        on the last period.
         """
         if not installation_id:
             raise RointeError("no installation id")
@@ -622,43 +626,40 @@ class RointeClient:
                 raise ValueError("travel mode must end after it starts")
             holidays.append(
                 {
-                    "from": format_utc_datetime(start, time_zone),
-                    "to": format_utc_datetime(end, time_zone) if end is not None else None,
+                    "from": format_utc_datetime(start),
+                    "to": format_utc_datetime(end) if end is not None else None,
                 }
             )
         _LOGGER.debug("travel mode for installation %s: %s", installation_id, holidays)
-        return await self._rest(
+        body = await self._rest(
             "PUT", f"installations/{installation_id}/holidays", json={"holidays": holidays}
         )
+        return _holidays_mode(body)
 
     async def async_toggle_travel_mode(self, installation_id: str) -> bool | None:
-        """Flip the installation's `holidaysMode` flag; return the new value.
-
-        The response is the installation record, so the new state is read from
-        it rather than assumed.
-        """
+        """Flip the installation's `holidaysMode` flag; return the new value."""
         body = await self._rest("PATCH", f"installations/{installation_id}/holidaysMode")
-        data = body.get("data", body) if isinstance(body, dict) else None
-        if isinstance(data, dict) and "holidaysMode" in data:
-            return bool(data["holidaysMode"])
-        return None
+        return _holidays_mode(body)
 
-    async def async_set_travel_mode_flag(self, installation_id: str, wanted: bool) -> bool | None:
-        """Drive the toggle to a wanted state, reading the result each time."""
-        state = await self.async_toggle_travel_mode(installation_id)
-        if state is not None and state != wanted:
-            # Our idea of the starting state was stale; one more flip lands it.
-            state = await self.async_toggle_travel_mode(installation_id)
-        return state
-
-    async def async_clear_travel_mode(
-        self, installation_id: str, *, mode_active: bool
+    async def async_set_travel_mode(
+        self,
+        installation_id: str,
+        periods: list[tuple[datetime, datetime | None]],
     ) -> None:
-        """Empty the period list and, as the app does, switch the mode off."""
-        await self.async_set_travel_periods(installation_id, [], "UTC")
-        if mode_active:
-            await self.async_set_travel_mode_flag(installation_id, False)
+        """Store the periods and make sure the master flag is on."""
+        flag = await self.async_set_travel_periods(installation_id, periods)
+        if flag is False:
+            flag = await self.async_toggle_travel_mode(installation_id)
+        if flag is not True:
+            raise RointeError(f"travel mode did not switch on (holidaysMode={flag})")
 
+    async def async_clear_travel_mode(self, installation_id: str) -> None:
+        """Empty the period list and make sure the master flag is off."""
+        flag = await self.async_set_travel_periods(installation_id, [])
+        if flag is True:
+            flag = await self.async_toggle_travel_mode(installation_id)
+        if flag is True:
+            raise RointeError("travel mode did not switch off")
 
 def _as_items(container: Any) -> list[Any]:
     """The API returns lists, but Firebase-backed payloads can be id-keyed

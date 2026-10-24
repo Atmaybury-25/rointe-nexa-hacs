@@ -154,7 +154,7 @@ action: rointe_nexa.set_travel_mode
 target:
   entity_id: climate.living_room   # any heater in the installation
 data:
-  start: "2026-12-20 08:00:00"     # local to the installation
+  start: "2026-12-20 08:00:00"     # Home Assistant's local time
   end: "2026-12-27 12:00:00"       # omit for indefinite
 ```
 
