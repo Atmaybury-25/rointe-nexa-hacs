@@ -256,6 +256,9 @@ def _register_services(hass: HomeAssistant) -> None:
                 await coordinator.client.async_set_travel_periods(
                     device.installation_id, [(start, end)], zone_name
                 )
+                # The flag is a toggle, so only flip it when it is off.
+                if not device.installation.get("holidaysMode"):
+                    await coordinator.client.async_toggle_travel_mode(device.installation_id)
             except ValueError as err:
                 raise ServiceValidationError(str(err)) from err
             except RointeError as err:

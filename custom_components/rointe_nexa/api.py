@@ -582,10 +582,13 @@ class RointeClient:
     #           {"holidays": [{"from": "2026-10-09 23:00:00",
     #                          "to":   "2026-10-15 08:00:00" | null}]}
     #           times in UTC; null = indefinite
-    #     PATCH installations/{id}/holidaysMode            no body
+    #     PATCH installations/{id}/holidaysMode            no body - a TOGGLE
     #
-    # The app only calls the PATCH when the period list has just been emptied
-    # while `holidaysMode` is still true, i.e. to switch travel mode off.
+    # `holidaysMode` is the master on/off. The PATCH flips it: the app's
+    # master-thermostat screen calls it whenever the travel switch differs
+    # from its starting state, in either direction, and the travel-mode
+    # screen calls it to switch off after emptying the period list. Storing
+    # periods alone does not set the flag (observed live, 24 Oct 2026).
 
     async def async_set_travel_periods(
         self,
@@ -618,13 +621,17 @@ class RointeClient:
             "PUT", f"installations/{installation_id}/holidays", json={"holidays": holidays}
         )
 
+    async def async_toggle_travel_mode(self, installation_id: str) -> None:
+        """Flip the installation's `holidaysMode` flag."""
+        await self._rest("PATCH", f"installations/{installation_id}/holidaysMode")
+
     async def async_clear_travel_mode(
         self, installation_id: str, *, mode_active: bool
     ) -> None:
         """Empty the period list and, as the app does, switch the mode off."""
         await self.async_set_travel_periods(installation_id, [], "UTC")
         if mode_active:
-            await self._rest("PATCH", f"installations/{installation_id}/holidaysMode")
+            await self.async_toggle_travel_mode(installation_id)
 
 
 def _as_items(container: Any) -> list[Any]:
