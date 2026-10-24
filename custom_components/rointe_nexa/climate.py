@@ -18,6 +18,7 @@ from .const import (
     DOMAIN,
     MODE_MANUAL,
     MODE_SCHEDULE,
+    POWER_OFF,
     POWER_ON,
     POWER_STANDBY,
     STATUS_COMFORT,
@@ -25,7 +26,7 @@ from .const import (
     STATUS_ICE,
 )
 from .coordinator import RointeCoordinator
-from .entity import RointeEntity
+from .entity import RointeEntity, async_setup_device_entities
 
 PRESET_COMFORT = "comfort"
 PRESET_ECO = "eco"
@@ -52,8 +53,11 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: RointeCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        RointeClimate(coordinator, serial) for serial in coordinator.data
+    async_setup_device_entities(
+        coordinator,
+        entry,
+        async_add_entities,
+        lambda serial: [RointeClimate(coordinator, serial)],
     )
 
 
@@ -111,7 +115,13 @@ class RointeClimate(RointeEntity, ClimateEntity):
         # AUTO means the heater is running its own weekly programme; HEAT
         # means a mode was picked by hand and holds until AUTO hands the
         # programme back. Without AUTO there is no way back to the schedule.
-        if self.read_commanded("power") == POWER_STANDBY:
+        # `power` is writable AND changeable at the appliance: a heater
+        # switched off by hand reports 0 on the device node while the zone
+        # node still says 2, because the cloud was never told. Show off if
+        # either node says off - off is then immediate from both directions,
+        # and on waits for the heater to confirm.
+        off = (POWER_OFF, POWER_STANDBY)
+        if self.read("power") in off or self.read_commanded("power") in off:
             return HVACMode.OFF
         if self.read_commanded("mode") == MODE_MANUAL:
             return HVACMode.HEAT
@@ -125,6 +135,7 @@ class RointeClimate(RointeEntity, ClimateEntity):
             "following_schedule": self.read_commanded("mode") != MODE_MANUAL,
             "rointe_status": self.read_commanded("status"),
             "reported_status": self.read("status"),
+            "switched_off_at_heater": self.read("power") == POWER_OFF,
         }
 
     async def async_set_temperature(self, **kwargs: Any) -> None:

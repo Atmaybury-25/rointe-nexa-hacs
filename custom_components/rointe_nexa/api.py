@@ -35,6 +35,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 import aiohttp
@@ -97,6 +98,22 @@ CHARGE_CHARS = frozenset({CHARGE_ON, CHARGE_OFF})
 # Never send this to the cloud - see the module docstring.
 FORBIDDEN_WRITE_KEYS = frozenset({"last_sync_datetime_device"})
 
+# Smart-charge limits, as the Nexa Android app enforces them
+# (DeviceInterface.updateChargePercentage, LimitLoadViewModel): the minimum is
+# 0-30, the maximum 60-100, both in steps of 5, the minimum strictly below the
+# maximum, and the two are always written together. Nothing outside these
+# ranges has ever been sent to a heater by Rointe's own software, and the
+# firmware's behaviour for anything else is unknown - a maximum of 0 was tried
+# as a "stop charging" lever and did not reliably stop charging.
+CHARGE_MIN_LOW = 0
+CHARGE_MIN_HIGH = 30
+CHARGE_MAX_LOW = 60
+CHARGE_MAX_HIGH = 100
+CHARGE_STEP = 5
+
+# The app caps additional charge at 7 hours.
+ADDITIONAL_CHARGE_MAX = 7
+
 
 class RointeError(Exception):
     """Any failure talking to Rointe."""
@@ -155,6 +172,36 @@ def validate_day(day: str, allowed: frozenset[str]) -> str:
     return day
 
 
+def validate_charge_limits(minimum: int, maximum: int) -> tuple[int, int]:
+    """Apply the app's own rules to a min/max charge pair."""
+    minimum, maximum = int(minimum), int(maximum)
+    if not CHARGE_MIN_LOW <= minimum <= CHARGE_MIN_HIGH:
+        raise ValueError(
+            f"minimum charge must be {CHARGE_MIN_LOW}-{CHARGE_MIN_HIGH}%, got {minimum}"
+        )
+    if not CHARGE_MAX_LOW <= maximum <= CHARGE_MAX_HIGH:
+        raise ValueError(
+            f"maximum charge must be {CHARGE_MAX_LOW}-{CHARGE_MAX_HIGH}%, got {maximum}"
+        )
+    if minimum % CHARGE_STEP or maximum % CHARGE_STEP:
+        raise ValueError(f"charge limits must be multiples of {CHARGE_STEP}")
+    if minimum >= maximum:
+        raise ValueError("minimum charge must be below maximum charge")
+    return minimum, maximum
+
+
+def format_local_datetime(value: datetime) -> str:
+    """A wall-clock time the way the app's kotlinx LocalDateTime serialises it.
+
+    ISO 8601 without an offset; seconds are omitted when they are zero, as
+    kotlinx does. The time zone travels separately, as an IANA name.
+    """
+    value = value.replace(tzinfo=None, microsecond=0)
+    if value.second:
+        return value.strftime("%Y-%m-%dT%H:%M:%S")
+    return value.strftime("%Y-%m-%dT%H:%M")
+
+
 @dataclass
 class RointeDevice:
     """One heater, as the platform describes it."""
@@ -167,6 +214,9 @@ class RointeDevice:
     installation_id: str
     installation_name: str
     online: bool = True
+    # The installation record from the REST inventory (minus its zones):
+    # time zone, travel-mode periods and the travel-mode flag live here.
+    installation: dict[str, Any] = field(default_factory=dict)
     # commanded state, from /zones/{zone_id}/data
     zone: dict[str, Any] = field(default_factory=dict)
     # reported state, from /devices/{serial}/data
@@ -384,6 +434,27 @@ class RointeClient:
         if status != 200:
             raise RointeConnectionError(f"RTDB PATCH {path}: HTTP {status} {body}")
 
+    # -- REST ---------------------------------------------------------------
+
+    async def _rest(self, method: str, path: str, **kwargs: Any) -> Any:
+        """Call the v4 REST API, signing in again once on a 401."""
+        if not self._rest_token:
+            await self.async_login()
+        url = f"{REST_BASE}/{path.lstrip('/')}"
+        status, body = await self._request(
+            method, url, headers={"token": self._rest_token}, **kwargs
+        )
+        if status == 401:
+            await self.async_login()
+            status, body = await self._request(
+                method, url, headers={"token": self._rest_token}, **kwargs
+            )
+        if status == 401:
+            raise RointeAuthError(f"{method} /{path}: token refused")
+        if not 200 <= status < 300:
+            raise RointeConnectionError(f"{method} /{path}: HTTP {status} {body}")
+        return body
+
     # -- inventory --------------------------------------------------------
 
     async def async_discover(self) -> list[RointeDevice]:
@@ -392,25 +463,14 @@ class RointeClient:
         The Onyx is a family neither community integration has seen, so this
         does not assume a device sits exactly where a radiator sits.
         """
-        if not self._rest_token:
-            await self.async_login()
-
-        status, body = await self._request(
-            "GET", f"{REST_BASE}/installations", headers={"token": self._rest_token}
-        )
-        if status == 401:
-            await self.async_login()
-            status, body = await self._request(
-                "GET", f"{REST_BASE}/installations", headers={"token": self._rest_token}
-            )
-        if status != 200:
-            raise RointeConnectionError(f"/installations: HTTP {status}")
+        body = await self._rest("GET", "installations")
 
         root = body.get("data", body) if isinstance(body, dict) else body
         found: list[RointeDevice] = []
         for inst in _as_items(root):
             if not isinstance(inst, dict):
                 continue
+            installation = {k: v for k, v in inst.items() if k != "zones"}
             for zone in _as_items(inst.get("zones")):
                 if not isinstance(zone, dict):
                     continue
@@ -427,6 +487,7 @@ class RointeClient:
                             installation_id=str(inst.get("id") or ""),
                             installation_name=str(inst.get("name") or ""),
                             online=dev.get("deviceStatus") == 1,
+                            installation=installation,
                         )
                     )
         return found
@@ -505,6 +566,66 @@ class RointeClient:
             payload[f"schedule/{int(index)}"] = validate_day(day, HEATING_CHARS)
         if payload:
             await self.async_command(device, payload)
+
+    # -- travel mode ------------------------------------------------------
+    #
+    # The app's "Travel mode" is not a device field at all. It is a list of
+    # periods stored on the installation through the REST API, and Rointe's
+    # backend switches the products off for each period. Established from the
+    # Android app (HolidaysModeViewModel -> InstallationInteractor ->
+    # InstallationRepository), Oct 2026:
+    #
+    #     PUT   installations/{id}/holidays
+    #           {"holidays": [{"from": {"date": "2026-10-10T00:00",
+    #                                   "zone": "Europe/London"},
+    #                          "to":   {...} | null}]}      null = indefinite
+    #     PATCH installations/{id}/holidaysMode            no body
+    #
+    # The app only calls the PATCH when the period list has just been emptied
+    # while `holidaysMode` is still true, i.e. to switch travel mode off.
+
+    async def async_set_travel_periods(
+        self,
+        installation_id: str,
+        periods: list[tuple[datetime, datetime | None]],
+        time_zone: str,
+    ) -> Any:
+        """Replace the installation's travel-mode periods.
+
+        Times are wall-clock times in ``time_zone`` (an IANA name - the
+        installation's own, as the app uses). An end of None is indefinite and
+        is only allowed on the last period.
+        """
+        if not installation_id:
+            raise RointeError("no installation id")
+        holidays: list[dict[str, Any]] = []
+        for index, (start, end) in enumerate(periods):
+            if end is None and index != len(periods) - 1:
+                raise ValueError("only the last travel period may be indefinite")
+            if end is not None and end <= start:
+                raise ValueError("travel mode must end after it starts")
+            holidays.append(
+                {
+                    "from": {"date": format_local_datetime(start), "zone": time_zone},
+                    "to": (
+                        {"date": format_local_datetime(end), "zone": time_zone}
+                        if end is not None
+                        else None
+                    ),
+                }
+            )
+        _LOGGER.debug("travel mode for installation %s: %s", installation_id, holidays)
+        return await self._rest(
+            "PUT", f"installations/{installation_id}/holidays", json={"holidays": holidays}
+        )
+
+    async def async_clear_travel_mode(
+        self, installation_id: str, *, mode_active: bool
+    ) -> None:
+        """Empty the period list and, as the app does, switch the mode off."""
+        await self.async_set_travel_periods(installation_id, [], "UTC")
+        if mode_active:
+            await self._rest("PATCH", f"installations/{installation_id}/holidaysMode")
 
 
 def _as_items(container: Any) -> list[Any]:

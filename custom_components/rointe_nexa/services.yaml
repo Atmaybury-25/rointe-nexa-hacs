@@ -76,3 +76,40 @@ boost:
           min: 1
           max: 1440
           unit_of_measurement: min
+
+set_travel_mode:
+  name: Set travel mode
+  description: >-
+    Switch the heaters off for a period, the same way the Nexa app's Travel
+    mode does. Rointe's servers hold the period and switch every product in the
+    installation off for it, so this works even if Home Assistant is down.
+    Replaces any travel periods already set.
+  target:
+    entity:
+      integration: rointe_nexa
+  fields:
+    start:
+      name: Start
+      description: >-
+        When travel mode starts. A time without an offset is taken as local
+        to the installation.
+      required: true
+      example: "2026-12-20 08:00:00"
+      selector:
+        datetime:
+    end:
+      name: End
+      description: When the heaters come back on. Leave empty for indefinite.
+      required: false
+      example: "2026-12-27 12:00:00"
+      selector:
+        datetime:
+
+clear_travel_mode:
+  name: Clear travel mode
+  description: >-
+    Remove every travel period and switch travel mode off, as clearing it in
+    the Nexa app does.
+  target:
+    entity:
+      integration: rointe_nexa

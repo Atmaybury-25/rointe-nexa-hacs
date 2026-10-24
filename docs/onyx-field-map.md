@@ -38,13 +38,13 @@ the heater the state is already synced, and the change is discarded.
 | Field | Meaning |
 |---|---|
 | `charge_percentage` | stored charge, % |
-| `charge_percentage_limit` | charge ceiling, % |
-| `charge_percentage_min` | charge floor, % |
+| `charge_percentage_limit` | Smart-charge ceiling, %. App range 60–100, step 5 |
+| `charge_percentage_min` | Smart-charge floor, %. App range 0–30, step 5; always written with the limit, and must be below it |
 | `charging` | in a charging state — **not** "drawing nameplate power" |
 | `charge_smart` | Smart Charge: the heater sizes its own charge |
 | `schedule_charging[0..6]` | 7 x 24 chars, `1` = may charge that hour, `0` = not. Index 0 = Monday |
 | `schedule_charge_type` | 0 custom, 1 Period 1, 2 Period 2 |
-| `additional_charge` | **hours** it may charge outside the window |
+| `additional_charge` | **hours** it may charge outside the window, 0–7 in the app |
 | `charging_consuption` | *(their typo)* constant 10000 on this model. Reads as 10 kWh of usable storage; unconfirmed |
 
 **Smart Charge does not override the schedule.** Observed on a live heater: with
@@ -97,6 +97,9 @@ say which modes may fire it. `res` is *resistencia*.
 | `res_man_config` | → Manual Mode |
 | `res_holiday_config` | → Holiday Mode |
 
+`res_holiday_config` is the travel-mode one: whether the element may run while
+the installation is in Travel mode.
+
 Worth knowing if you are load-shifting: with `res_boost_config` on, a Boost draws
 real power rather than only moving stored heat.
 
@@ -145,6 +148,39 @@ firmware across Rointe's range rather than anything this model uses:
 `use_floor_probe`, `surface_probe_enabled`, `legionella_mode`,
 `legionella_status`, `pir_mode`, `pir_datetime`, `pilot_mode`, `user_mode`,
 `advance_enable` (distinct from `adelanto_enable`, and it never moves).
+
+## Travel mode is not a device field
+
+The app's Travel mode lives on the **installation**, in the REST API, not in
+either RTDB node:
+
+```
+PUT   /installations/{id}/holidays
+      {"holidays": [{"from": {"date": "2026-10-10T00:00", "zone": "Europe/London"},
+                     "to":   {"date": "2026-10-15T09:00", "zone": "Europe/London"}}]}
+PATCH /installations/{id}/holidaysMode        (no body; used to switch it off)
+```
+
+`to` may be `null` (indefinite) on the last period only. The installation
+record carries `holidays` and `holidaysMode` back. Rointe's backend switches
+the products off for each period ("switch off your products", in the app).
+
+## What the Android app enforces
+
+From the decompiled Nexa Android app (`com.rointe.nexa`), which checks these
+before writing:
+
+| Field | Rule |
+|---|---|
+| `charge_percentage_min` / `_limit` | 0–30 / 60–100, step 5, min < max, written together |
+| `additional_charge` | 0–7 |
+| `schedule_charging` | 7 strings of 24 `0`/`1` |
+| setpoints | within the device's min/max, multiples of 0.5 |
+| almost everything | refused while `power` is 0 (off at the unit) |
+
+`power` is 0 off, 1 standby, 2 on. `status` is none, off, ice, eco, comfort.
+`schedule_charge_type` is 0 user programming, 1 pre-programme 1, 2
+pre-programme 2.
 
 ## Still unexplained
 

@@ -18,7 +18,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import RointeCoordinator
-from .entity import RointeEntity
+from .entity import RointeEntity, async_setup_device_entities
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -66,10 +66,14 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: RointeCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        RointeBinarySensor(coordinator, serial, description)
-        for serial in coordinator.data
-        for description in BINARY_SENSORS
+    async_setup_device_entities(
+        coordinator,
+        entry,
+        async_add_entities,
+        lambda serial: [
+            *(RointeBinarySensor(coordinator, serial, d) for d in BINARY_SENSORS),
+            RointeTravelModeSensor(coordinator, serial),
+        ],
     )
 
 
@@ -99,3 +103,43 @@ class RointeBinarySensor(RointeEntity, BinarySensorEntity):
         if self.entity_description.key == "is_alive":
             return self.coordinator.last_update_success and self.device is not None
         return super().available
+
+
+class RointeTravelModeSensor(RointeEntity, BinarySensorEntity):
+    """Whether the heater's installation is in the app's Travel mode.
+
+    Travel mode is held on the installation, not the heater, so every heater
+    in the installation shows the same value. Refreshed with the inventory
+    (every 30 minutes, and straight after the travel-mode services run).
+    """
+
+    _attr_translation_key = "travel_mode"
+    _attr_name = "Travel mode"
+    _attr_icon = "mdi:bag-suitcase"
+
+    def __init__(self, coordinator: RointeCoordinator, serial: str) -> None:
+        super().__init__(coordinator, serial)
+        self._attr_unique_id = f"{serial}_travel_mode"
+
+    @property
+    def is_on(self) -> bool | None:
+        device = self.device
+        if device is None or "holidaysMode" not in device.installation:
+            return None
+        return bool(device.installation.get("holidaysMode"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        device = self.device
+        periods = []
+        for item in (device.installation.get("holidays") or []) if device else []:
+            if not isinstance(item, dict):
+                continue
+            start, end = item.get("from"), item.get("to")
+            periods.append(
+                {
+                    "start": start.get("date") if isinstance(start, dict) else start,
+                    "end": end.get("date") if isinstance(end, dict) else end,
+                }
+            )
+        return {"periods": periods}

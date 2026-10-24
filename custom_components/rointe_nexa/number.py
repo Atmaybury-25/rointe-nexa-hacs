@@ -13,11 +13,21 @@ from homeassistant.components.number import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .api import (
+    ADDITIONAL_CHARGE_MAX,
+    CHARGE_MAX_HIGH,
+    CHARGE_MAX_LOW,
+    CHARGE_MIN_HIGH,
+    CHARGE_MIN_LOW,
+    CHARGE_STEP,
+    validate_charge_limits,
+)
 from .const import DOMAIN
 from .coordinator import RointeCoordinator
-from .entity import RointeEntity
+from .entity import RointeEntity, async_setup_device_entities
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -37,9 +47,9 @@ NUMBERS: tuple[RointeNumberDescription, ...] = (
         translation_key="max_charge",
         name="Maximum charge",
         field="charge_percentage_limit",
-        native_min_value=0,
-        native_max_value=100,
-        native_step=5,
+        native_min_value=CHARGE_MAX_LOW,
+        native_max_value=CHARGE_MAX_HIGH,
+        native_step=CHARGE_STEP,
         native_unit_of_measurement=PERCENTAGE,
         mode=NumberMode.SLIDER,
         icon="mdi:battery-high",
@@ -49,9 +59,9 @@ NUMBERS: tuple[RointeNumberDescription, ...] = (
         translation_key="min_charge",
         name="Minimum charge",
         field="charge_percentage_min",
-        native_min_value=0,
-        native_max_value=100,
-        native_step=5,
+        native_min_value=CHARGE_MIN_LOW,
+        native_max_value=CHARGE_MIN_HIGH,
+        native_step=CHARGE_STEP,
         native_unit_of_measurement=PERCENTAGE,
         mode=NumberMode.SLIDER,
         icon="mdi:battery-low",
@@ -62,7 +72,7 @@ NUMBERS: tuple[RointeNumberDescription, ...] = (
         name="Additional charge",
         field="additional_charge",
         native_min_value=0,
-        native_max_value=8,
+        native_max_value=ADDITIONAL_CHARGE_MAX,
         native_step=1,
         native_unit_of_measurement=UnitOfTime.HOURS,
         mode=NumberMode.BOX,
@@ -114,15 +124,22 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: RointeCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        RointeNumber(coordinator, serial, description)
-        for serial in coordinator.data
-        for description in NUMBERS
+    async_setup_device_entities(
+        coordinator,
+        entry,
+        async_add_entities,
+        lambda serial: [RointeNumber(coordinator, serial, d) for d in NUMBERS],
     )
 
 
 class RointeNumber(RointeEntity, NumberEntity):
     """One writable setting.
+
+    The two charge limits bound Rointe's Smart charging: the minimum (0-30%)
+    and maximum (60-100%) it may aim for, exactly the ranges the Nexa app
+    allows. They are not a way to stop a heater charging - for that, use the
+    `rointe_nexa.set_travel_mode` service or take hours out of the charge
+    schedule.
 
     `additional_charge` is hours of charging the heater may take outside its
     scheduled window - set it to 0 to stop it wandering into expensive hours.
@@ -160,7 +177,48 @@ class RointeNumber(RointeEntity, NumberEntity):
         writes when you drag its target, so changing one here changes the
         heater's stored preset - not just the current hour.
         """
-        if self.entity_description.write_float:
-            await self.command({self.entity_description.field: float(value)})
+        field = self.entity_description.field
+        if field in _CHARGE_PAIR:
+            await self.command(self._charge_pair(field, int(value)))
+        elif self.entity_description.write_float:
+            await self.command({field: float(value)})
         else:
-            await self.command({self.entity_description.field: int(value)})
+            await self.command({field: int(value)})
+
+    def _charge_pair(self, field: str, value: int) -> dict[str, int]:
+        """Both smart-charge limits, as the app always writes them.
+
+        The app never writes one limit without the other, and insists the
+        minimum stays below the maximum. Changing one here sends the other's
+        current value alongside it.
+        """
+        other = _CHARGE_PAIR[field]
+        current = self.read_commanded(other)
+        try:
+            current = int(current)
+        except (TypeError, ValueError):
+            current = CHARGE_MIN_HIGH if other == "charge_percentage_min" else CHARGE_MAX_HIGH
+        # A limit left outside the app's range (e.g. written by an older
+        # version of this integration) is pulled back inside it, so it can
+        # never block changing the other one. The ranges do not overlap, so
+        # the minimum always ends up below the maximum.
+        if other == "charge_percentage_min":
+            current = min(max(current, CHARGE_MIN_LOW), CHARGE_MIN_HIGH)
+        else:
+            current = min(max(current, CHARGE_MAX_LOW), CHARGE_MAX_HIGH)
+        current -= current % CHARGE_STEP
+        if field == "charge_percentage_min":
+            minimum, maximum = value, current
+        else:
+            minimum, maximum = current, value
+        try:
+            minimum, maximum = validate_charge_limits(minimum, maximum)
+        except ValueError as err:
+            raise ServiceValidationError(str(err)) from err
+        return {"charge_percentage_min": minimum, "charge_percentage_limit": maximum}
+
+
+_CHARGE_PAIR = {
+    "charge_percentage_min": "charge_percentage_limit",
+    "charge_percentage_limit": "charge_percentage_min",
+}

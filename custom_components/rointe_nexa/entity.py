@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import RointeDevice
@@ -67,3 +72,28 @@ class RointeEntity(CoordinatorEntity[RointeCoordinator]):
         if device is None:
             return
         await self.coordinator.async_command(device, payload)
+
+
+def async_setup_device_entities(
+    coordinator: RointeCoordinator,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+    build: Callable[[str], Iterable[Entity]],
+) -> None:
+    """Add entities for every heater now, and for any that appear later.
+
+    The coordinator re-reads the inventory periodically, so a heater paired
+    in the Nexa app after Home Assistant started turns up without a reload.
+    """
+    known: set[str] = set()
+
+    @callback
+    def _add_new() -> None:
+        new = [serial for serial in (coordinator.data or {}) if serial not in known]
+        if not new:
+            return
+        known.update(new)
+        async_add_entities(entity for serial in new for entity in build(serial))
+
+    _add_new()
+    entry.async_on_unload(coordinator.async_add_listener(_add_new))

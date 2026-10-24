@@ -19,7 +19,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import RointeCoordinator
-from .entity import RointeEntity
+from .entity import RointeEntity, async_setup_device_entities
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -118,10 +118,13 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: RointeCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        RointeSensor(coordinator, serial, description)
-        for serial in coordinator.data
-        for description in SENSORS + UNMAPPED
+    async_setup_device_entities(
+        coordinator,
+        entry,
+        async_add_entities,
+        lambda serial: [
+            RointeSensor(coordinator, serial, d) for d in SENSORS + UNMAPPED
+        ],
     )
 
 

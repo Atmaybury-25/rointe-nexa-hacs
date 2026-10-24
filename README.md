@@ -92,11 +92,21 @@ get a user id from Rointe's REST API; the realtime layer never sees it.
 | `sensor` Core temperature | The storage core, typically 40–70 °C |
 | `sensor` Room temperature | The heater's own probe |
 | `binary_sensor` Charging / Open window / Online | |
-| `number` Maximum / Minimum charge | |
-| `number` Additional charge | Hours the heater may charge *outside* its window. Set 0 to stop it wandering into expensive hours. |
+| `binary_sensor` Travel mode | Whether the installation is in the app's Travel mode. Attributes list the periods. Same value on every heater in the installation. |
+| `number` Maximum / Minimum charge | The limits Rointe's **Smart charging** aims between. Same ranges as the Nexa app: minimum 0–30 %, maximum 60–100 %, steps of 5, and both are always written together. Not a way to stop a heater charging — see Travel mode. |
+| `number` Additional charge | Hours the heater may charge *outside* its window, 0–7. Set 0 to stop it wandering into expensive hours. |
 | `number` Comfort / Eco / Anti-frost temperature | The three stored setpoints the weekly programme switches between. The climate target temperature only writes whichever preset is active right now, so use these to change one that is not. |
 | `switch` Boost | The app's Boost — the timer, with its own temperature and duration. Remembers the mode it interrupted and hands it back when the boost ends, whether switched off or run out of time. |
 | `switch` Smart charging | Rointe's optimiser. **Turn it off** if you want Home Assistant to pick the charging hours. |
+| `switch` Extra element in auto / manual / boost / travel mode | Configuration. Whether the direct-acting element (as well as the storage core) may heat in each mode. With one off, that mode runs on stored heat only. |
+| `switch` Silent mode | Configuration. The app's silent mode. |
+
+Heaters added in the Nexa app are picked up automatically within 30 minutes; no
+reload needed.
+
+Like the app, the integration refuses to change settings on a heater that has
+been switched off at the unit, except to switch it back on. Climate shows such a
+heater as **Off** (attribute `switched_off_at_heater`).
 
 Note that Boost releases stored heat; it does not take a charge. If you are
 trying to buy cheap electricity, `set_charge_hours` is the service you want.
@@ -132,6 +142,29 @@ data:
   temperature: 21
   duration: 60      # minutes
 ```
+
+### `rointe_nexa.set_travel_mode` / `rointe_nexa.clear_travel_mode`
+
+The Nexa app's Travel mode. Rointe's servers hold the period and switch every
+product in the installation off for it, so it keeps working if Home Assistant
+or your internet goes down mid-trip.
+
+```yaml
+action: rointe_nexa.set_travel_mode
+target:
+  entity_id: climate.living_room   # any heater in the installation
+data:
+  start: "2026-12-20 08:00:00"     # local to the installation
+  end: "2026-12-27 12:00:00"       # omit for indefinite
+```
+
+`clear_travel_mode` removes the periods and switches travel mode off. Whether
+the direct element may still run while away is the *Extra element in travel
+mode* switch.
+
+Do **not** use Maximum charge as a "stop charging" lever. Earlier versions
+allowed writing it below 60 %; the heater is only ever sent 60–100 % by
+Rointe's own app and did not reliably stop charging at 0 %.
 
 ## Driving it from electricity prices
 
@@ -204,7 +237,10 @@ standing between them and a cold house.
 
 ## Limitations
 
-- **Cloud only.** No local API, no Matter. No internet means no control; the
+- **Cloud only.** No local API, no Matter. Every port on the heater is closed.
+  It does have a Bluetooth control channel (the Android app can read and write
+  the same fields over BLE), but the heater only advertises in pairing mode, so
+  it is not usable day to day. No internet means no control; the
   heater keeps running its own schedule.
 - **Polling**, every 60 s. The app uses a Firebase websocket; polling is far
   less code for a device whose state moves on the scale of minutes.
@@ -224,7 +260,7 @@ roughly in order of value:
 1. An RTDB `/devices/{serial}` dump from a Rointe device that is **not** an Onyx —
    scrub the address, coordinates, serial, MAC and wifi SSID before posting.
 2. Identification of any of the unmapped fields, particularly `advance_enable` /
-   `adelanto_enable`, `schedule_charge_type`, and the units of
+   `adelanto_enable`, and the units of
    `charging_consuption` (their typo, not mine).
 3. Whether writing the installation-level 24-slot `tariff` array actually steers
    Rointe's smart charging, which would be a far more durable control surface

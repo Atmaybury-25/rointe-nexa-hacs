@@ -37,6 +37,9 @@
       },
       "online": {
         "name": "Online"
+      },
+      "travel_mode": {
+        "name": "Travel mode"
       }
     },
     "number": {
@@ -79,6 +82,21 @@
       },
       "smart_charge": {
         "name": "Smart charging"
+      },
+      "element_auto": {
+        "name": "Extra element in auto"
+      },
+      "element_manual": {
+        "name": "Extra element in manual"
+      },
+      "element_boost": {
+        "name": "Extra element in boost"
+      },
+      "element_travel": {
+        "name": "Extra element in travel mode"
+      },
+      "silent_mode": {
+        "name": "Silent mode"
       }
     }
   },
@@ -124,6 +142,24 @@
           "description": "Minutes to boost for."
         }
       }
+    },
+    "set_travel_mode": {
+      "name": "Set travel mode",
+      "description": "Switch the heaters off for a period, like the Nexa app's Travel mode.",
+      "fields": {
+        "start": {
+          "name": "Start",
+          "description": "When travel mode starts."
+        },
+        "end": {
+          "name": "End",
+          "description": "When the heaters come back on. Empty = indefinite."
+        }
+      }
+    },
+    "clear_travel_mode": {
+      "name": "Clear travel mode",
+      "description": "Remove every travel period and switch travel mode off."
     }
   }
 }
