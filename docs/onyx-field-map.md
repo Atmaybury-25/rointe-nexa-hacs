@@ -156,10 +156,14 @@ either RTDB node:
 
 ```
 PUT   /installations/{id}/holidays
-      {"holidays": [{"from": {"date": "2026-10-10T00:00", "zone": "Europe/London"},
-                     "to":   {"date": "2026-10-15T09:00", "zone": "Europe/London"}}]}
+      {"holidays": [{"from": "2026-10-09 23:00:00",
+                     "to":   "2026-10-15 08:00:00"}]}
 PATCH /installations/{id}/holidaysMode        (no body; used to switch it off)
 ```
+
+Times are strings, `yyyy-MM-dd HH:mm:ss`, in **UTC** (the app converts to
+`Etc/UTC` before formatting). Sending `{date, zone}` objects is rejected with
+HTTP 400 "This value should be of type string".
 
 `to` may be `null` (indefinite) on the last period only. The installation
 record carries `holidays` and `holidaysMode` back. Rointe's backend switches

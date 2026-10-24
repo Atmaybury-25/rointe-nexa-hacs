@@ -105,6 +105,15 @@ class RointeBinarySensor(RointeEntity, BinarySensorEntity):
         return super().available
 
 
+def _as_utc(value: Any) -> Any:
+    """Rointe returns "yyyy-MM-dd HH:mm:ss" in UTC; mark it as such."""
+    if isinstance(value, dict):
+        value = value.get("date")
+    if isinstance(value, str) and len(value) == 19 and value[10] == " ":
+        return value.replace(" ", "T") + "+00:00"
+    return value
+
+
 class RointeTravelModeSensor(RointeEntity, BinarySensorEntity):
     """Whether the heater's installation is in the app's Travel mode.
 
@@ -135,11 +144,7 @@ class RointeTravelModeSensor(RointeEntity, BinarySensorEntity):
         for item in (device.installation.get("holidays") or []) if device else []:
             if not isinstance(item, dict):
                 continue
-            start, end = item.get("from"), item.get("to")
             periods.append(
-                {
-                    "start": start.get("date") if isinstance(start, dict) else start,
-                    "end": end.get("date") if isinstance(end, dict) else end,
-                }
+                {"start": _as_utc(item.get("from")), "end": _as_utc(item.get("to"))}
             )
         return {"periods": periods}

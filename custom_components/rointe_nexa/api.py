@@ -35,7 +35,8 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from typing import Any
 
 import aiohttp
@@ -190,16 +191,18 @@ def validate_charge_limits(minimum: int, maximum: int) -> tuple[int, int]:
     return minimum, maximum
 
 
-def format_local_datetime(value: datetime) -> str:
-    """A wall-clock time the way the app's kotlinx LocalDateTime serialises it.
+def format_utc_datetime(value: datetime, time_zone: str) -> str:
+    """A time the way Rointe's REST API wants it: "yyyy-MM-dd HH:mm:ss" in UTC.
 
-    ISO 8601 without an offset; seconds are omitted when they are zero, as
-    kotlinx does. The time zone travels separately, as an IANA name.
+    The app's ZonedDateTimeSerializer (kmmcore DatesFormatter) formats with
+    that pattern after converting to Etc/UTC. A naive ``value`` is a wall-clock
+    time in ``time_zone``; an aware one is converted as-is. Sending the
+    {date, zone} object form is rejected with HTTP 400 ("This value should be
+    of type string") - confirmed against the live API, 24 Oct 2026.
     """
-    value = value.replace(tzinfo=None, microsecond=0)
-    if value.second:
-        return value.strftime("%Y-%m-%dT%H:%M:%S")
-    return value.strftime("%Y-%m-%dT%H:%M")
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=ZoneInfo(time_zone))
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 @dataclass
@@ -576,9 +579,9 @@ class RointeClient:
     # InstallationRepository), Oct 2026:
     #
     #     PUT   installations/{id}/holidays
-    #           {"holidays": [{"from": {"date": "2026-10-10T00:00",
-    #                                   "zone": "Europe/London"},
-    #                          "to":   {...} | null}]}      null = indefinite
+    #           {"holidays": [{"from": "2026-10-09 23:00:00",
+    #                          "to":   "2026-10-15 08:00:00" | null}]}
+    #           times in UTC; null = indefinite
     #     PATCH installations/{id}/holidaysMode            no body
     #
     # The app only calls the PATCH when the period list has just been emptied
@@ -606,12 +609,8 @@ class RointeClient:
                 raise ValueError("travel mode must end after it starts")
             holidays.append(
                 {
-                    "from": {"date": format_local_datetime(start), "zone": time_zone},
-                    "to": (
-                        {"date": format_local_datetime(end), "zone": time_zone}
-                        if end is not None
-                        else None
-                    ),
+                    "from": format_utc_datetime(start, time_zone),
+                    "to": format_utc_datetime(end, time_zone) if end is not None else None,
                 }
             )
         _LOGGER.debug("travel mode for installation %s: %s", installation_id, holidays)
