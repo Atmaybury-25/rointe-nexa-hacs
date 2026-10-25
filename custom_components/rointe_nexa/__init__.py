@@ -193,19 +193,29 @@ def _register_services(hass: HomeAssistant) -> None:
         hours = sorted(set(call.data[ATTR_HOURS]))
         days = call.data.get(ATTR_DAYS) or list(range(7))
         day_string = hours_to_schedule(hours)
+        coordinators = set()
         for coordinator, device in _devices_for_call(hass, call):
             await coordinator.client.async_set_charge_schedule(
                 device, {int(d): day_string for d in days}
             )
+            coordinators.add(coordinator)
+        # One refresh after every heater has been written, not one between
+        # writes.
+        for coordinator in coordinators:
             await coordinator.async_request_refresh()
 
     async def _set_heating_schedule(call: ServiceCall) -> None:
         day_string = validate_day(call.data[ATTR_SCHEDULE].upper(), HEATING_CHARS)
         days = call.data.get(ATTR_DAYS) or list(range(7))
+        coordinators = set()
         for coordinator, device in _devices_for_call(hass, call):
             await coordinator.client.async_set_heating_schedule(
                 device, {int(d): day_string for d in days}
             )
+            coordinators.add(coordinator)
+        # One refresh after every heater has been written, not one between
+        # writes.
+        for coordinator in coordinators:
             await coordinator.async_request_refresh()
 
     async def _boost(call: ServiceCall) -> None:

@@ -17,6 +17,7 @@ from .api import RointeAuthError, RointeClient, RointeDevice, RointeError
 from .const import (
     DEFAULT_SCAN_INTERVAL,
     DISCOVERY_INTERVAL,
+    DISCOVERY_RETRY,
     DOMAIN,
     MODE_MANUAL,
     POWER_OFF,
@@ -102,11 +103,29 @@ class RointeCoordinator(DataUpdateCoordinator[dict[str, RointeDevice]]):
 
     async def _async_update_data(self) -> dict[str, RointeDevice]:
         try:
-            if (
-                not self._devices
-                or time.monotonic() - self._last_discovery > DISCOVERY_INTERVAL
-            ):
+            if not self._devices:
                 await self._async_discover()
+            elif time.monotonic() - self._last_discovery > DISCOVERY_INTERVAL:
+                # The periodic re-read only looks for new heaters and travel-
+                # mode changes. If Rointe's inventory API is slow or down,
+                # carry on with the heaters already known rather than failing
+                # the whole poll - the realtime data is a separate service and
+                # is usually fine. Retry the inventory in a few minutes.
+                try:
+                    await self._async_discover()
+                except RointeAuthError:
+                    raise
+                except RointeError as err:
+                    _LOGGER.warning(
+                        "Rointe inventory unavailable (%s); keeping the %d known "
+                        "heater(s) and retrying in %d minutes",
+                        err,
+                        len(self._devices),
+                        DISCOVERY_RETRY // 60,
+                    )
+                    self._last_discovery = (
+                        time.monotonic() - DISCOVERY_INTERVAL + DISCOVERY_RETRY
+                    )
             await self.client.async_refresh(self._devices)
         except RointeAuthError as err:
             # Surfaces a re-auth prompt rather than retrying a bad password

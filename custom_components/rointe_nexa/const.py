@@ -19,6 +19,8 @@ DEFAULT_SCAN_INTERVAL = 60
 # How often to re-read the installation inventory. Catches heaters added in the
 # Nexa app after Home Assistant started, and keeps travel-mode state fresh.
 DISCOVERY_INTERVAL = 1800
+# After a failed periodic re-read, try again this much sooner.
+DISCOVERY_RETRY = 300
 
 # Rointe's own preset names, as they appear in the device's `status` field.
 STATUS_COMFORT = "comfort"

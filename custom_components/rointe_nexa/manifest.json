@@ -10,5 +10,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Atmaybury-25/rointe-nexa-hacs/issues",
   "requirements": [],
-  "version": "0.6.0"
+  "version": "0.6.1"
 }
